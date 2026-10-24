@@ -160,14 +160,20 @@ private fun BandTable(rows: List<BandRow>) {
             listOf("SOC 구간", "기대", "내 속도", "차이").forEach { Text(it, Modifier.weight(1f), color = EvFitColors.TextSecondary, fontSize = 17.sp) }
         }
         rows.forEach { r ->
-            val diff = r.exp?.let { r.my.avgKw - it.median }
+            // 표에 보이는 정수끼리 뺀다(소수로 빼면 190·189가 "0", 190·190이 "+0"처럼 어긋남)
+            val diff = r.exp?.let { r.my.avgKw.toInt() - it.median.toInt() }
             Row(Modifier.fillMaxWidth()) {
                 Text("${r.my.fromSoc}–${r.my.toSoc}%", Modifier.weight(1f), color = EvFitColors.TextPrimary, fontSize = 19.sp)
                 Text(r.exp?.median?.toInt()?.toString() ?: "—", Modifier.weight(1f), color = EvFitColors.TextSecondary, fontSize = 19.sp)
                 Text("${r.my.avgKw.toInt()}", Modifier.weight(1f), color = EvFitColors.TextPrimary, fontSize = 19.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    diff?.let { (if (it >= 0) "+" else "") + it.toInt() } ?: "—", Modifier.weight(1f),
-                    color = if ((diff ?: 0.0) >= 0) EvFitColors.Saving else EvFitColors.Warning, fontSize = 19.sp,
+                    diff?.let { if (it > 0) "+$it" else "$it" } ?: "—", Modifier.weight(1f),
+                    color = when {
+                        diff == null || diff == 0 -> EvFitColors.TextSecondary
+                        diff > 0 -> EvFitColors.Saving
+                        else -> EvFitColors.Warning
+                    },
+                    fontSize = 19.sp,
                 )
             }
         }
