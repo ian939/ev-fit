@@ -11,6 +11,7 @@
 - **네이밍**: Electric Vehicle + FIT("꼭 맞다"). 모든 운전자에게 가장 좋은 충전소는 없지만, 나에게 가장 잘 맞는 충전소는 있습니다.
 - **Brand Essence** Personalized Charging · **Brand Promise** The Right Charge for You(최저가만이 아니라 실제 요금·거리·충전 시간·경험 종합) · **Brand Vision** Effortless EV Charging
 - **F**ind Your Best · **I**ntelligent Choice · **T**ailored Experience
+- **로고 "회랑 링"**: 휘어 오는 경로 위에 놓인 링 하나. 앱 지도에서 추천 충전소를 표시하는 링과 같은 모양으로, "경로 위 나에게 맞는 한 곳"을 뜻합니다.
 
 ## 핵심 기능
 
@@ -29,8 +30,10 @@
 | ![FIT 추천](docs/screenshots/01_route_fit.png) | ![경로 우선](docs/screenshots/02_route_onroute.png) |
 | **충전 리포트 — 같은 차종 기대 구간 위 내 충전 곡선** | **충전 중 — SOC 링과 실시간 곡선** |
 | ![충전 리포트](docs/screenshots/07_report_session.png) | ![충전 중](docs/screenshots/06_charging.png) |
+| **라이트 테마 — 경로 지도** | **라이트 테마 — 충전 리포트** |
+| ![라이트 경로](docs/screenshots/11_light_route.png) | ![라이트 리포트](docs/screenshots/12_light_report.png) |
 
-전체 10장(최저가 탭·상세·충전 준비·같은 차종·이번 달·지갑 포함)은 `docs/screenshots/`에 있습니다. `bash tools/demo_flow.sh`로 같은 흐름을 다시 캡처할 수 있습니다.
+전체 12장(최저가 탭·상세·충전 준비·같은 차종·이번 달·지갑·라이트 테마 포함)은 `docs/screenshots/`에 있습니다. `bash tools/demo_flow.sh`로 같은 흐름을 다시 캡처할 수 있습니다.
 
 ## 실행 방법
 
@@ -114,5 +117,5 @@ app/src/main/java/com/ian/evfit/
   demo/      시연 시나리오(위치·경로·충전 SOC 흐름)
   ui/        Compose 화면(경로 지도·패널·상세, 충전 준비·충전 중, 리포트 차트, 지갑)
 tools/       build.sh(한글 경로 우회 빌드), export_assets.py, make_benchmarks.py, make_mapdata.py(지도 자산), demo_flow.sh(시연 흐름 재생·캡처)
-docs/screenshots/  에뮬레이터 화면 캡처 10장
+docs/screenshots/  에뮬레이터 화면 캡처 12장(다크 10 + 라이트 2)
 ```

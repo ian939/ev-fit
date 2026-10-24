@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pleos 에뮬레이터(2560x1440)에서 시연 흐름(v2 경로 지도→탭→상세→충전 준비→충전→리포트)을 탭으로 재생하며 화면 캡처를 docs/screenshots에 저장한다
+# Pleos 에뮬레이터(2560x1440)에서 시연 흐름(v2 경로 지도→탭→상세→충전 준비→충전→리포트)을 탭으로 재생하며 화면 캡처를 docs/screenshots에 저장한다(마지막에 라이트 테마 2장)
 # 사용: bash tools/demo_flow.sh [shots|play]   (play는 캡처 없이 영상 녹화용으로 같은 흐름만 재생)
 # 전제: 에뮬레이터 실행 중, 앱 설치됨. 앱 데이터를 지우고 첫 실행부터 시작한다(위치 권한 허용 포함).
 set -euo pipefail
@@ -12,6 +12,11 @@ if [ "$MODE" = shots ]; then rm -f "$OUT"/*.png; fi
 
 tap() { "$A" shell input tap "$1" "$2"; "$A" shell sleep "${3:-2}"; }
 shot() { if [ "$MODE" = shots ]; then "$A" exec-out screencap -p > "$OUT/$1.png"; echo "saved $1"; fi; }
+tapText() {  # 스크롤 위치에 따라 좌표가 바뀌는 곳 — 화면 글자를 찾아 그 가운데를 누른다
+  "$A" shell uiautomator dump /sdcard/ui.xml > /dev/null
+  set -- $("$A" shell cat /sdcard/ui.xml | tr '>' '\n' | grep "text=\"$1\"" | head -1 | sed -E 's/.*bounds="\[([0-9]+),([0-9]+)\]\[([0-9]+),([0-9]+)\]".*/\1 \2 \3 \4/')
+  tap $(( ($1 + $3) / 2 )) $(( ($2 + $4) / 2 ))
+}
 
 # 처음 상태로: 현재 사용자(AAOS는 10) 데이터 삭제 후 런처 인텐트로 실행
 USER_ID="$("$A" shell am get-current-user | tr -d '\r')"
@@ -41,3 +46,14 @@ shot 09_report_month
 tap 905 352           # 레일 [지갑]
 shot 10_wallet
 tap 905 154           # 레일 [경로]로 복귀
+if [ "$MODE" = shots ]; then
+  # 라이트 테마: 지갑 아래쪽 '화면' 칸에서 바꾼 뒤 처음부터 다시 시작한 경로와 리포트
+  tap 905 352
+  for i in 1 2 3; do "$A" shell input swipe 1700 1100 1700 300 300; done
+  tapText "라이트"
+  tap 905 154
+  tap 1827 209 4      # [처음부터]
+  shot 11_light_route
+  tap 905 256         # 레일 [리포트]
+  shot 12_light_report
+fi
