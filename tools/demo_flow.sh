@@ -8,7 +8,7 @@ MODE="${1:-shots}"
 A="${ADB:-/c/Android/sdk/platform-tools/adb.exe}"
 OUT="$(cd "$(dirname "$0")/.." && pwd -W)/docs/screenshots"
 mkdir -p "$OUT"
-rm -f "$OUT"/*.png
+if [ "$MODE" = shots ]; then rm -f "$OUT"/*.png; fi
 
 tap() { "$A" shell input tap "$1" "$2"; "$A" shell sleep "${3:-2}"; }
 shot() { if [ "$MODE" = shots ]; then "$A" exec-out screencap -p > "$OUT/$1.png"; echo "saved $1"; fi; }
