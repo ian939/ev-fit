@@ -1,0 +1,68 @@
+{
+  "asOf": "2026-10-24",
+  "plans": [
+    {
+      "id": "cv_passh_mint", "name": "채비패스 H 민트", "brand": "현대", "providerBid": "CV",
+      "monthlyFeeKrw": 9900, "monthlyCapKwh": 200, "fastPriceKrwKwh": 299,
+      "scope": "OWN_AND_ROAMING_FAST", "highwayAllowed": true,
+      "eligibility": "'26년 출고 현대자동차 EV",
+      "note": "채비 포함 전국 급속 로밍 충전소 299원. 채비 완속 199원은 앱 계산 제외. 약정 초과분 일반 요금(가정)",
+      "sourceUrl": "https://www.hyundai.com/kr/ko/service-membership/ev/ev-everycare/charging-service-programs",
+      "asOf": "2026-10-24"
+    },
+    {
+      "id": "cv_passh_blue", "name": "채비패스 H 블루", "brand": "현대", "providerBid": "CV",
+      "monthlyFeeKrw": 19900, "monthlyCapKwh": 400, "fastPriceKrwKwh": 299,
+      "scope": "OWN_AND_ROAMING_FAST", "highwayAllowed": true,
+      "eligibility": "'26년 출고 현대자동차 EV",
+      "note": "채비 포함 전국 급속 로밍 충전소 299원. 채비 완속 199원은 앱 계산 제외. 약정 초과분 일반 요금(가정)",
+      "sourceUrl": "https://www.hyundai.com/kr/ko/service-membership/ev/ev-everycare/charging-service-programs",
+      "asOf": "2026-10-24"
+    },
+    {
+      "id": "st_sub_master", "name": "SK일렉링크 구독 마스터", "brand": "공통", "providerBid": "ST",
+      "monthlyFeeKrw": 19900, "monthlyCapKwh": null, "fastPriceKrwKwh": 295,
+      "scope": "OWN_ONLY", "highwayAllowed": true,
+      "eligibility": "SK일렉링크 회원",
+      "note": "약정 무제한, 급속 전용. 고속도로 포함(사용자 확인 2026-10-24)",
+      "sourceUrl": "https://skelectlink.co.kr/membership/subscribe",
+      "asOf": "2026-10-24"
+    },
+    {
+      "id": "st_sub_pro", "name": "SK일렉링크 구독 프로", "brand": "공통", "providerBid": "ST",
+      "monthlyFeeKrw": 8900, "monthlyCapKwh": 300, "fastPriceKrwKwh": 300,
+      "scope": "OWN_ONLY", "highwayAllowed": true,
+      "eligibility": "SK일렉링크 회원",
+      "note": "약정 300kWh, 급속 전용. 고속도로 포함(사용자 확인 2026-10-24)",
+      "sourceUrl": "https://skelectlink.co.kr/membership/subscribe",
+      "asOf": "2026-10-24"
+    },
+    {
+      "id": "st_sub_basic", "name": "SK일렉링크 구독 베이직", "brand": "공통", "providerBid": "ST",
+      "monthlyFeeKrw": 3900, "monthlyCapKwh": 150, "fastPriceKrwKwh": 305,
+      "scope": "OWN_ONLY", "highwayAllowed": true,
+      "eligibility": "SK일렉링크 회원",
+      "note": "약정 150kWh, 급속 전용. 고속도로 포함(사용자 확인 2026-10-24)",
+      "sourceUrl": "https://skelectlink.co.kr/membership/subscribe",
+      "asOf": "2026-10-24"
+    },
+    {
+      "id": "st_sub_starter", "name": "SK일렉링크 구독 스타터", "brand": "공통", "providerBid": "ST",
+      "monthlyFeeKrw": 900, "monthlyCapKwh": 50, "fastPriceKrwKwh": 315,
+      "scope": "OWN_ONLY", "highwayAllowed": true,
+      "eligibility": "SK일렉링크 회원",
+      "note": "약정 50kWh, 급속 전용. 고속도로 포함(사용자 확인 2026-10-24)",
+      "sourceUrl": "https://skelectlink.co.kr/membership/subscribe",
+      "asOf": "2026-10-24"
+    },
+    {
+      "id": "cv_vmembers", "name": "채비 V 멤버스", "brand": "공통", "providerBid": "CV",
+      "monthlyFeeKrw": 4900, "monthlyCapKwh": null, "fastPriceKrwKwh": 331.1,
+      "scope": "OWN_ONLY", "highwayAllowed": false,
+      "eligibility": "채비 회원",
+      "note": "급속 할인(이벤트 기간 23%), 대상 충전기 한정, 월 3,000크레딧. 고속도로 미적용",
+      "sourceUrl": "https://www.chaevi.com/kr/service/price.php",
+      "asOf": "2026-10-24"
+    }
+  ]
+}
