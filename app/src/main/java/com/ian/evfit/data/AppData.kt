@@ -2,6 +2,7 @@
 package com.ian.evfit.data
 
 import android.content.Context
+import com.ian.evfit.engine.LatLng
 import com.ian.evfit.engine.PricingTable
 import com.ian.evfit.engine.Stage
 import com.ian.evfit.engine.Station
@@ -34,6 +35,20 @@ data class ModelBench(
 data class BenchmarkData(val synthetic: Boolean, val note: String, val models: List<ModelBench>)
 
 @Serializable
+private data class BasemapJson(val land: List<List<List<Double>>>, val borders: List<List<List<Double>>>, val labels: List<LabelJson>)
+
+@Serializable
+private data class LabelJson(val name: String, val lat: Double, val lng: Double)
+
+@Serializable
+private data class RouteJson(val source: String, val points: List<List<Double>>)
+
+data class MapLabel(val name: String, val pos: LatLng)
+
+/** 지도 바탕(Natural Earth 육지 고리·시도 경계선·도시 이름) */
+data class Basemap(val land: List<List<LatLng>>, val borders: List<List<LatLng>>, val labels: List<MapLabel>)
+
+@Serializable
 private data class PricesJson(val snapshotId: Int, val collectedAt: String, val self: Map<String, Double>, val roaming: Map<String, Double>)
 
 @Serializable
@@ -53,6 +68,10 @@ data class AppData(
     val vehicles: List<VehicleSpec>,
     val bench: BenchmarkData,
     val stationsYm: String,
+    val basemap: Basemap,
+    /** 시연 경로선(양재 → 망향휴게소 → 정부대전청사, OSRM) */
+    val demoRoute: List<LatLng>,
+    val demoRouteSource: String,
 ) {
     private val stationById = stations.associateBy { it.id }
 
@@ -79,6 +98,9 @@ object AssetParser {
         val plans = json.decodeFromString<PlansJson>(read("plans.json"))
         val vehicles = json.decodeFromString<List<VehicleSpec>>(read("vehicles.json"))
         val bench = json.decodeFromString<BenchmarkData>(read("benchmarks.json"))
+        val map = json.decodeFromString<BasemapJson>(read("basemap.json"))
+        val route = json.decodeFromString<RouteJson>(read("route_demo.json"))
+        fun pts(xs: List<List<Double>>) = xs.map { LatLng(it[0], it[1]) }
 
         val st = json.parseToJsonElement(read("stations.json")) as JsonObject
         val fields = st.getValue("fields").jsonArray.map { it.jsonPrimitive.content }
@@ -111,6 +133,9 @@ object AssetParser {
             vehicles = vehicles,
             bench = bench,
             stationsYm = st.getValue("snapshotYm").jsonPrimitive.content,
+            basemap = Basemap(map.land.map(::pts), map.borders.map(::pts), map.labels.map { MapLabel(it.name, LatLng(it.lat, it.lng)) }),
+            demoRoute = pts(route.points),
+            demoRouteSource = route.source,
         )
     }
 }
