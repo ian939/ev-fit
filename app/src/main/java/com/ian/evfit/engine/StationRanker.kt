@@ -4,6 +4,7 @@ package com.ian.evfit.engine
 data class RankedStation(
     val quote: Quote, val distanceKm: Double,
     val detourMin: Double = 0.0, val chargeMin: Double = 0.0, val successPct: Double = 0.0, val fit: Double = 0.0,
+    val fitParts: FitParts? = null,
 )
 
 object StationRanker {
