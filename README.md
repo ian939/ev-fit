@@ -22,12 +22,27 @@
 | 충전 준비 | 도착 전 결제 계정 확정, PnC 계약 전환(시뮬레이션), 충전구 열기, 목표 충전량 설정, 충전 전 확인 안내 |
 | 음성 | 다음 충전·충전 준비·완료 음성 안내, "가장 싼 충전소" 같은 음성 명령 |
 
+## 화면 (Pleos Connect Emulator v2.1.0, 시연 모드)
+
+| 다음 충전 — 내 결제 계정으로 예상 요금 | 충전소 비교 — FIT 추천 순 |
+|---|---|
+| ![다음 충전](docs/screenshots/02_next_stop.png) | ![충전소 비교](docs/screenshots/03_finder.png) |
+| **충전소 상세 — 결제 수단별 요금** | **충전 리포트 — 동일 차종 기대 속도와 비교** |
+| ![충전소 상세](docs/screenshots/04_detail.png) | ![충전 리포트](docs/screenshots/07_report_session.png) |
+
+전체 9장(홈·충전 준비·충전 중·동일 차량·지갑 포함)은 `docs/screenshots/`에 있습니다. `bash tools/demo_flow.sh`로 같은 흐름을 다시 캡처할 수 있습니다.
+
 ## 실행 방법
 
 1. **Pleos Connect Emulator v2.1.0(API 34) 준비**
    - Android Studio > SDK Manager > SDK Update Sites에 `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml` 추가
    - SDK Platforms > Android API 34 > `Pleos Connect system Image` 설치, SDK Tools > `Android Emulator` 설치
    - Device Manager > Automotive > `Pleos Connect v2.1.0`, Default boot `Cold`, RAM `4 GB`로 AVD 생성 후 실행
+   - Android Studio 화면에 Pleos 기기가 안 보이면 명령줄로 만듭니다(기기 정의는 시스템 이미지에 포함). 만든 뒤 `~/.android/avd/Pleos_Connect_v2.1.avd/config.ini`에서 `hw.ramSize=4096M`, `fastboot.forceColdBoot=yes`, `hw.gpu.enabled=yes`로 바꿉니다.
+     ```bash
+     avdmanager create avd -n Pleos_Connect_v2.1 -k "system-images;android-34;pleos_car_emulator;x86_64" -d Pleos_Connect_v2_0
+     emulator -avd Pleos_Connect_v2.1
+     ```
 2. **설치·실행**
    ```bash
    adb install -r apk/<APK 파일명>.apk
@@ -43,8 +58,12 @@
    ```bash
    adb forward tcp:8088 tcp:8088   # 브라우저에서 http://127.0.0.1:8088/
    ```
-   Energy 도메인의 Battery SOC·Charge Switch·Charge Port를 바꾸면 앱 SOC 표시, 충전 기록 시작·종료, 충전구 상태가 반영됩니다.
-5. **주행 중 제한 확인**: `adb shell cmd hmg_car_service --service drivingstate driving_regulation on|off`
+   Virtual Console은 브라우저 창이 열려 있어야(하단 `DDS ONLINE`) 값을 바꿀 수 있습니다. Energy 도메인의 Battery SOC를 바꾸면 앱 SOC가, Charge Switch를 On으로 바꾸면 충전 기록이 시작되고 목표 SOC에 닿으면 자동 종료됩니다. 앱의 [충전 준비]가 연 충전구는 Charge Port Open으로 보입니다.
+   에뮬레이터 GPS 기본값은 미국 마운틴뷰라 주변 충전소가 없습니다. 국내 위치로 바꿉니다.
+   ```bash
+   adb emu geo fix 126.9780 37.5665   # 경도 위도 순, 서울시청
+   ```
+5. **주행 중 제한 확인**: Virtual Console에서 기어를 D로 두고 가속하면 주행 상태가 됩니다. 이때 충전소 목록이 5개로 줄고 지갑 편집이 잠기며, 상단에 `주행 중` 배지가 뜹니다.
 
 ## 테스트 환경 및 필요한 설정
 
@@ -90,5 +109,6 @@ app/src/main/java/com/ian/evfit/
   cpo/       충전사업자 연동 인터페이스와 목 구현(PnC 계약 전환)
   demo/      시연 시나리오(위치·경로·충전 SOC 흐름)
   ui/        Compose 화면(홈·충전소·상세·충전 준비·충전 중·리포트·지갑)
-tools/       build.sh(한글 경로 우회 빌드), export_assets.py, make_benchmarks.py
+tools/       build.sh(한글 경로 우회 빌드), export_assets.py, make_benchmarks.py, demo_flow.sh(시연 흐름 재생·캡처)
+docs/screenshots/  에뮬레이터 화면 캡처 9장
 ```
