@@ -198,7 +198,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
             trip.all.forEach { c ->
                 val o = frame.pt(c.station.pos)
                 if (c.reachable) drawCircle(EvFitColors.TextPrimary.copy(alpha = if (c.onRoute) 0.75f else 0.32f), (if (c.onRoute) 4.5f else 3f) * d, o)
-                else drawCircle(EvFitColors.TextSecondary.copy(alpha = 0.3f), 3f * d, o, style = Stroke(1.2f * d))
+                else drawCircle(EvFitColors.TextSecondary.copy(alpha = 0.22f), 1.8f * d, o)
             }
 
             // 차 위치(진행 방향 화살표)
@@ -317,10 +317,15 @@ fun CorridorRuler(s: UiState, modifier: Modifier = Modifier) {
                 Offset(x(c.alongKm), y + 6 * d), Offset(x(c.alongKm), y + 6 * d + h), 1.5f * d,
             )
         }
-        // 도달 한계
+        // 도달 한계 — 글자는 막대 아래(오른쪽 끝에 가까우면 눈금 왼쪽), 겹치는 km 눈금 글자는 생략
+        var reachSpan = 0f..0f
         if (trip.carKm + trip.rangeKm < line.lengthKm) {
-            drawLine(EvFitColors.Warning, Offset(x(reachEnd), y - 16 * d), Offset(x(reachEnd), y + 16 * d), 3 * d, StrokeCap.Round)
-            label(measurer, "주행 가능 끝 ${reachEnd.toInt()}km", Offset(x(reachEnd) + 8 * d, y - 26 * d), reachStyle, center = false)
+            val rx = x(reachEnd)
+            drawLine(EvFitColors.Warning, Offset(rx, y - 16 * d), Offset(rx, y + 16 * d), 3 * d, StrokeCap.Round)
+            val lay = measurer.measure("주행 가능 끝 ${reachEnd.toInt()}km", reachStyle)
+            val lx = if (rx + 8 * d + lay.size.width > right - 70 * d) rx - 8 * d - lay.size.width else rx + 8 * d
+            drawText(lay, topLeft = Offset(lx, y + 38 * d - lay.size.height / 2f))
+            reachSpan = (lx - 24 * d)..(lx + lay.size.width + 24 * d)
         }
         // 차
         val cx = x(trip.carKm)
@@ -346,7 +351,8 @@ fun CorridorRuler(s: UiState, modifier: Modifier = Modifier) {
         label(measurer, "0", Offset(left, y + 38 * d), axis)
         var km = 50
         while (km < line.lengthKm - 15) {
-            label(measurer, "$km", Offset(x(km.toDouble()), y + 38 * d), axis); km += 50
+            if (x(km.toDouble()) !in reachSpan) label(measurer, "$km", Offset(x(km.toDouble()), y + 38 * d), axis)
+            km += 50
         }
         label(measurer, "${line.lengthKm.toInt()}km", Offset(right, y + 38 * d), axis)
     }
