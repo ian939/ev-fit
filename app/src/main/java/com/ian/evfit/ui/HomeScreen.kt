@@ -27,7 +27,8 @@ fun HomeScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Text("내 차에 딱 맞는 충전", color = EvFitColors.AccentText, style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Badge("🚘 ${s.wallet.vehicleModel ?: "차종 미선택"} · 내 멤버십 적용 중", bg = EvFitColors.Card, fg = EvFitColors.TextPrimary)
+            val hasMembership = s.wallet.memberships.isNotEmpty() || s.wallet.subscriptions.isNotEmpty()
+            Badge("🚘 ${s.wallet.vehicleModel ?: "차종 미선택"}${if (hasMembership) " · 내 멤버십 적용 중" else ""}", bg = EvFitColors.Card, fg = EvFitColors.TextPrimary)
         }
         if (s.vehicleAssumed) Text("지갑에서 차종을 고르세요 — 70kWh 가정", color = EvFitColors.Warning, style = MaterialTheme.typography.bodyMedium)
         if (wide) {

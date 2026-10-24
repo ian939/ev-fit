@@ -440,8 +440,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 wallet = wallet, records = records, lastRecord = record, session = null, prep = null,
                 nav = Nav(tab = Tab.REPORT),
+                // 충전을 마쳤으니 계획된 첫 충전 정차는 끝난 것으로 본다(홈에 같은 정차지가 다시 뜨지 않게)
+                route = it.route?.let { r -> r.copy(stops = r.stops.drop(1)) },
             )
         }
+        refreshNextStop()
         val saving = record.moeReferenceKrw?.let { it - record.costKrw } ?: 0
         speakOnce("충전이 끝났어요. ${record.costKrw}원, 환경부 카드보다 ${saving}원 아꼈어요.")
     }
