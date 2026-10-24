@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EV FIT 앱 표시 이름 등 문자열 리소스 -->
+<resources>
+    <string name="app_name">EV FIT</string>
+</resources>
