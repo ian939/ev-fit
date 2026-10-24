@@ -64,7 +64,8 @@ fun FinderScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
             val listState = rememberLazyListState()
             LaunchedEffect(f.results) { listState.scrollToItem(0) }
             LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(f.results, key = { _, r -> r.quote.station.id }) { i, r ->
+                // 주행 중(UX 제한)에는 목록을 5개로 줄인다 — 목록을 받은 뒤 주행을 시작해도 바로 적용되게 화면에서 자른다
+                itemsIndexed(if (s.restricted) f.results.take(5) else f.results, key = { _, r -> r.quote.station.id }) { i, r ->
                     StationRow(s, r, topFit = f.sort == FinderSort.FIT && i == 0, wide = wide) { vm.openDetail(r.quote.station.id) }
                 }
             }

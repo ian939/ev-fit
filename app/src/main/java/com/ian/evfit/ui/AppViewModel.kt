@@ -275,7 +275,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             _ui.update {
                 it.copy(
                     socAssumed = assumed,
-                    finder = it.finder.copy(results = if (it.restricted) results.take(5) else results, kwh = kwh),
+                    finder = it.finder.copy(results = results, kwh = kwh),
                 )
             }
         }
