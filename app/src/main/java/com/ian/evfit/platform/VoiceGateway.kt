@@ -6,6 +6,8 @@ import ai.pleos.playground.stt.listener.ResultListener
 import ai.pleos.playground.tts.constant.Mode as TtsMode
 import ai.pleos.playground.stt.constant.Mode as SttMode
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +40,13 @@ class PleosVoiceGateway(private val context: Context) : VoiceGateway {
     private var androidReady = false
     private var stt: SpeechToText? = null
     private var pending: ((String) -> Unit)? = null
+    private val main = Handler(Looper.getMainLooper())
+    private val listenTimeout = Runnable {
+        if (pending != null) {
+            runCatching { stt?.stop() }
+            pending = null
+        }
+    }
 
     override fun start() {
         runCatching {
@@ -116,11 +125,18 @@ class PleosVoiceGateway(private val context: Context) : VoiceGateway {
             Log.w(TAG, "STT 요청 실패: $it")
             pending = null
         }
+        // 말소리가 없으면 인식이 끝나지 않고 마이크가 계속 켜져 있으므로(에뮬레이터에서 확인) 일정 시간 뒤 멈춘다
+        main.removeCallbacks(listenTimeout)
+        main.postDelayed(listenTimeout, LISTEN_TIMEOUT_MS)
     }
 
     override fun stop() {
         runCatching { pleosTts?.release() }
         runCatching { androidTts?.shutdown() }
         runCatching { stt?.release() }
+    }
+
+    private companion object {
+        const val LISTEN_TIMEOUT_MS = 8_000L
     }
 }
