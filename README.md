@@ -1,0 +1,94 @@
+<!-- EV FIT 저장소 안내 — 공모전 제출 요건(한 줄 소개·실행 방법·테스트 환경·APK 위치) 포함 -->
+
+# EV FIT (이브이 핏)
+
+> **내 차에 딱 맞는 충전, EV FIT**
+
+내가 가진 결제수단(환경부 카드·충전사업자 회원·구독)으로 **실제로 내는 요금**, 경로·충전 시간, 동일 차종 충전 경험을 차가 종합해 **가장 잘 맞는 충전소와 결제 계정**을 고르고, PnC 충전까지 준비하는 현대자동차그룹 Pleos Connect용 차량 앱입니다.
+
+## 브랜드
+
+- **네이밍**: Electric Vehicle + FIT("꼭 맞다"). 모든 운전자에게 가장 좋은 충전소는 없지만, 나에게 가장 잘 맞는 충전소는 있습니다.
+- **Brand Essence** Personalized Charging · **Brand Promise** The Right Charge for You(최저가만이 아니라 실제 요금·거리·충전 시간·경험 종합) · **Brand Vision** Effortless EV Charging
+- **F**ind Your Best · **I**ntelligent Choice · **T**ailored Experience
+
+## 핵심 기능
+
+| 기능 | 내용 |
+|---|---|
+| **FIT Price** | 환경부 공시 요금 매트릭스(회원가·로밍가)와 구독 약정 잔량·고속도로 적용 여부를 반영해 충전소마다 결제 계정별 예상 요금을 계산하고 가장 싼 계정을 고른다 |
+| **FIT Route** | 내비 경로상 충전 정차·목적지 주변·내 주변 급속 충전소를 FIT 점수(요금·시간·신뢰도)로 추천하고, 고른 충전소를 내비 경유지로 넘긴다 |
+| **FIT Insight** | 충전 중 차량 SOC 변화로 잰 내 충전 속도를 동일 차종 기대 구간과 SOC 구간별로 비교하는 리포트, 동일 차량 리포트, 이번 달 기록 |
+| 충전 준비 | 도착 전 결제 계정 확정, PnC 계약 전환(시뮬레이션), 충전구 열기, 목표 충전량 설정, 충전 전 확인 안내 |
+| 음성 | 다음 충전·충전 준비·완료 음성 안내, "가장 싼 충전소" 같은 음성 명령 |
+
+## 실행 방법
+
+1. **Pleos Connect Emulator v2.1.0(API 34) 준비**
+   - Android Studio > SDK Manager > SDK Update Sites에 `https://nexus-playground.pleos.ai/repository/raw-releases/connect-avd/2.x/crp-sys-img.xml` 추가
+   - SDK Platforms > Android API 34 > `Pleos Connect system Image` 설치, SDK Tools > `Android Emulator` 설치
+   - Device Manager > Automotive > `Pleos Connect v2.1.0`, Default boot `Cold`, RAM `4 GB`로 AVD 생성 후 실행
+2. **설치·실행**
+   ```bash
+   adb install -r apk/<APK 파일명>.apk
+   adb shell am start -n com.ian.evfit/.MainActivity
+   ```
+3. **시연 모드(처음 실행 시 켜져 있음)** — 홈에서 순서대로 누릅니다.
+   1. **[시연 시작]**: 서울 → 정부대전청사 경로, 내비 계획 충전 정차 "망향휴게소 (부산)"
+   2. 다음 충전 카드 확인: SK일렉링크 카드(구독 마스터 295원/kWh)로 예상 14,304원, 환경부 카드 대비 4,757원 절약, 같은 휴게소 SK시그넷 충전기는 환경부 카드만 가능
+   3. **[다른 충전소 비교]**: FIT 추천 순 목록(`✓ 최적 FIT`, 경로 추가 시간, 충전 시간)
+   4. **[도착(시연)]** → 충전 준비(PnC 계약 전환·충전구 열기·목표 80%)
+   5. **[충전 시작(시연)]** → 약 15~25초 재생(실제 약 17분을 60배 압축) 후 리포트 자동 진입
+4. **실차 모드** — 지갑 > 시연 모드 끄기. 차량 상태는 Virtual Console로 바꿉니다.
+   ```bash
+   adb forward tcp:8088 tcp:8088   # 브라우저에서 http://127.0.0.1:8088/
+   ```
+   Energy 도메인의 Battery SOC·Charge Switch·Charge Port를 바꾸면 앱 SOC 표시, 충전 기록 시작·종료, 충전구 상태가 반영됩니다.
+5. **주행 중 제한 확인**: `adb shell cmd hmg_car_service --service drivingstate driving_regulation on|off`
+
+## 테스트 환경 및 필요한 설정
+
+| 항목 | 값 |
+|---|---|
+| 개발 PC | Windows 11, JDK 17 |
+| 빌드 | Gradle 8.13(Wrapper 포함), AGP 8.10.1, Kotlin 2.1.20, Jetpack Compose(BOM 2024.12.01) |
+| SDK 버전 | compileSdk 36 / targetSdk 34 / minSdk 28 |
+| 실행 환경 | Pleos Connect Emulator v2.1.0(API 34) |
+| Pleos SDK | `ai.pleos.playground:Vehicle:2.3.2`, `NaviHelper:3.0.5`, `FusedLocation:1.1.3`, `TextToSpeech:3.3.1`, `SpeechToText:3.3.1` (저장소 `https://nexus-playground.pleos.ai/repository/maven-releases/`) |
+| 퍼미션 | `pleos.car.permission.CAR_ENERGY`, `CONTROL_CAR_ENERGY`, `CAR_INFO`, `NAVI_ROUTE`, `NAVI_ROUTE_SEARCH`, `NAVI_CUSTOM_MAP`, `FUSED_LOCATION`, `TTS_SERVICE`, `STT_SERVICE` |
+| 네트워크 | 실행 중 불필요(요금·충전소 데이터는 APK에 포함) |
+| 계정 | 불필요(Vehicle·NaviHelper는 신청 없이 사용, TTS·STT는 ON_DEVICE 모드) |
+
+## APK 위치
+
+`apk/` 폴더의 release APK(파일명 형식 `팀명_EVFIT_release.apk`, APK Signature Scheme v3 서명).
+
+## 소스 빌드
+
+```bash
+./gradlew assembleRelease     # 서명 키가 없으면 debug 키로 서명
+./gradlew testDebugUnitTest   # 요금 엔진·FIT 점수·자산 파싱 등 단위 테스트
+```
+
+## 데이터 출처와 고지
+
+- 요금: 무공해차 통합누리집 '전기차 충전요금 안내'(기후에너지환경부) 사업자별 회원가·로밍요금 매트릭스, 2026-10-24 수집
+- 충전소: 환경부 전기차 충전소 현황 2026-08 기준(급속 충전소 24,090곳)
+- 구독: 현대자동차 EV 에브리케어, 채비, SK일렉링크 공식 페이지(2026-10-24 확인)
+- **동일 차종 충전 통계·성공률·만족도는 시연용 합성 데이터**입니다(공식 제원·실측 통계 아님).
+- **충전사업자 연동과 PnC 계약 전환은 앱 안의 목(mock) 시뮬레이션**입니다. 실제 결제는 하지 않습니다.
+- **FIT 점수** = 후보 충전소끼리 최소-최대 정규화한 요금 50% + 시간 30%(경로 추가 이동 = 거리×2분 추정 + 예상 충전 시간) + 신뢰도 20%(합성 성공률). 가중치와 시간 추정은 시연용 가정입니다.
+- EV FIT은 공모전 컨셉 브랜드이며 현대자동차 공식 브랜드 자산이 아닙니다.
+
+## 프로젝트 구조
+
+```
+app/src/main/java/com/ian/evfit/
+  engine/    요금 엔진(PriceEngine), FIT 점수, 충전소 랭커, 충전 곡선 — 순수 Kotlin + 단위 테스트
+  data/      자산(JSON) 파싱, 지갑·기록 저장
+  platform/  Pleos Vehicle·NaviHelper·FusedLocation·TTS/STT, AAOS 주행 제한
+  cpo/       충전사업자 연동 인터페이스와 목 구현(PnC 계약 전환)
+  demo/      시연 시나리오(위치·경로·충전 SOC 흐름)
+  ui/        Compose 화면(홈·충전소·상세·충전 준비·충전 중·리포트·지갑)
+tools/       build.sh(한글 경로 우회 빌드), export_assets.py, make_benchmarks.py
+```
