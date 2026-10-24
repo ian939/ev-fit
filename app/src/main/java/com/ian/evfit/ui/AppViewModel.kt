@@ -135,10 +135,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 it.copy(
                     loading = false, data = data, demoMode = demo, wallet = wallet,
                     records = graph.prefs.records, lastRecord = graph.prefs.records.lastOrNull(),
-                    soc = if (demo) DemoDriver.START_SOC else it.soc,
-                    location = if (demo) DemoDriver.START_LOCATION else it.location,
+                    // 설정을 읽기 전(demoMode 기본값 true)에 들어온 실차 값은 수집기가 버렸으므로 여기서 현재 값을 읽는다
+                    soc = if (demo) DemoDriver.START_SOC else graph.vehicle.soc.value,
+                    location = if (demo) DemoDriver.START_LOCATION else graph.location.location.value,
+                    route = if (demo) it.route else graph.navi.route.value,
                 )
             }
+            refreshNextStop()
             refreshFinder()
         }
         graph.vehicle.readVin { vin = it }
@@ -452,7 +455,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun onLiveSoc(soc: Int?) {
+        val first = _ui.value.soc == null && soc != null
         _ui.update { it.copy(soc = soc) }
+        // 첫 SOC가 들어오면 30% 가정으로 계산해 둔 예상 충전량·금액을 다시 계산한다
+        if (first) {
+            refreshNextStop()
+            refreshFinder()
+        }
         val sess = _ui.value.session ?: return
         if (soc == null || sess.simulated) return
         liveSamples += SocSample(System.currentTimeMillis(), soc)
