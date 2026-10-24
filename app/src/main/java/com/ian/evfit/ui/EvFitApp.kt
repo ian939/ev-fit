@@ -1,4 +1,4 @@
-// EV FIT 화면 골격(v2) — 왼쪽 레일(경로·리포트·지갑, 직접 그린 아이콘), 상단 줄(워드마크·상태·마이크)과 화면 전환
+// EV FIT 화면 골격(v2) — 왼쪽 레일(경로·리포트·지갑, 직접 그린 아이콘), 상단 줄(로고·상태·마이크), 로딩 화면과 화면 전환
 package com.ian.evfit.ui
 
 import androidx.compose.foundation.Canvas
@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ian.evfit.ui.theme.EvFitColors
+import com.ian.evfit.ui.theme.EvFitMark
 import com.ian.evfit.ui.theme.EvFitTheme
 import com.ian.evfit.ui.theme.EvFitWordmark
 
@@ -49,7 +50,8 @@ fun EvFitApp(vm: AppViewModel) {
     EvFitTheme {
         Surface(Modifier.fillMaxSize(), color = EvFitColors.Bg) {
             if (s.loading) {
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
+                    EvFitMark(120.dp)
                     EvFitWordmark(56)
                     Muted("내 차에 딱 맞는 충전을 준비하고 있어요")
                 }
@@ -146,6 +148,7 @@ private fun TopBar(s: UiState, vm: AppViewModel) {
         Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 32.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        EvFitMark(36.dp)
         // 워드마크와 차종은 같은 기준선에, 그 묶음은 줄 가운데에
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             EvFitWordmark(28, Modifier.alignByBaseline())

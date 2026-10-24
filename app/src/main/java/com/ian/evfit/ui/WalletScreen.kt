@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import com.ian.evfit.data.Prefs
 import com.ian.evfit.engine.ActiveSubscription
 import com.ian.evfit.ui.theme.EvFitColors
+import com.ian.evfit.ui.theme.EvFitMark
 import com.ian.evfit.ui.theme.EvFitWordmark
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -142,7 +143,10 @@ fun WalletScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
         }
 
         EvCard(Modifier.fillMaxWidth(), highlight = true) {
-            EvFitWordmark(32)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                EvFitMark(44.dp, ringFill = EvFitColors.CardAlt)
+                EvFitWordmark(32)
+            }
             Text("복잡한 충전은 하나로, 최적의 충전은 나에게.", color = EvFitColors.AccentText, style = MaterialTheme.typography.titleMedium)
             Muted("EV FIT은 공모전 컨셉 브랜드이며 현대자동차 공식 브랜드 자산이 아닙니다.")
         }
