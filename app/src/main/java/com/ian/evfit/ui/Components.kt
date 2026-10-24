@@ -42,13 +42,13 @@ fun unitPrice(p: Double): String =
     if (p % 1.0 == 0.0) String.format(Locale.KOREA, "%,.0f원", p) else String.format(Locale.KOREA, "%,.1f원", p)
 fun one(v: Double): String = String.format(Locale.KOREA, "%.1f", v)
 
-/** 계기판 숫자 + 작은 단위. 숫자는 Barlow, 단위는 Wanted로 흐리게 */
+/** 계기판 숫자 + 작은 단위. 숫자는 Barlow, 단위는 Wanted로 흐리게. 둘은 같은 기준선에 놓고, 바깥 Row에서도 alignByBaseline으로 맞출 수 있다 */
 @Composable
 fun Gauge(value: String, unit: String? = null, size: TextUnit = 44.sp, color: Color = EvFitColors.TextPrimary, modifier: Modifier = Modifier) {
-    Row(modifier, verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(value, style = gauge(size, color = color))
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(value, Modifier.alignByBaseline(), style = gauge(size, color = color))
         if (unit != null) {
-            Text(unit, color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(bottom = (size.value * 0.12f).dp))
+            Text(unit, Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         }
     }
 }

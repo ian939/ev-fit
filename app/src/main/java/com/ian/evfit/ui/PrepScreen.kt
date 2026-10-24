@@ -35,57 +35,63 @@ fun PrepScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
     val p = s.prep ?: return
     val best = p.quote.best ?: return
     val operator = s.data?.operatorName(p.station.bid) ?: ""
-    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-        Column(Modifier.weight(1.2f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            BackRow("경로") { vm.closePrep() }
-            Text("충전 준비", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.titleMedium)
-            Text(p.station.name, color = EvFitColors.TextPrimary, style = MaterialTheme.typography.headlineLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                Attr("사업자", operator)
-                Attr("최대 출력", "${p.station.maxKw}kW")
-                Attr("지금 배터리", "${s.soc ?: "—"}%")
+    // 뒤로는 맨 위 한 줄, 그 아래 두 열은 같은 높이에서 시작한다
+    Column(Modifier.fillMaxSize()) {
+        BackRow("경로") { vm.closePrep() }
+        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+            Column(Modifier.weight(1.2f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text("충전 준비", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.titleMedium)
+                Text(p.station.name, color = EvFitColors.TextPrimary, style = MaterialTheme.typography.headlineLarge)
+                Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                    Attr("사업자", operator)
+                    Attr("최대 출력", "${p.station.maxKw}kW")
+                    Attr("지금 배터리", "${s.soc ?: "—"}%")
+                }
+                Hairline()
+                Step(1, "결제 계정 확정", "${best.credential.label}${best.appliedPlan?.let { "  ${it.name}" } ?: ""}", StepState.DONE)
+                Step(
+                    2, "PnC 계약 전환",
+                    p.contract?.let { "${it.emaid}  ${it.label}로 인증${if (it.simulated) "(시뮬레이션)" else ""}" } ?: "전환하는 중",
+                    if (p.contract != null) StepState.DONE else StepState.WAIT,
+                )
+                Step(3, "충전구 열기", p.portResult ?: "차에 요청하는 중", stateOf(p.portResult, "충전구를"))
+                Step(4, "목표 충전량", p.limitResult ?: "차에 요청하는 중", stateOf(p.limitResult, "목표"))
+                Step(5, "충전 전 확인", p.tips.joinToString("\n"), StepState.DONE)
             }
-            Hairline()
-            Step(1, "결제 계정 확정", "${best.credential.label}${best.appliedPlan?.let { "  ${it.name}" } ?: ""}", StepState.DONE)
-            Step(
-                2, "PnC 계약 전환",
-                p.contract?.let { "${it.emaid}  ${it.label}로 인증${if (it.simulated) "(시뮬레이션)" else ""}" } ?: "전환하는 중",
-                if (p.contract != null) StepState.DONE else StepState.WAIT,
-            )
-            Step(3, "충전구 열기", p.portResult ?: "차에 요청하는 중", stateOf(p.portResult, "충전구를"))
-            Step(4, "목표 충전량", p.limitResult ?: "차에 요청하는 중", stateOf(p.limitResult, "목표"))
-            Step(5, "충전 전 확인", p.tips.joinToString("\n"), StepState.DONE)
-        }
-        Column(
-            Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(EvFitColors.Panel).padding(32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Text("예상 금액", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.titleMedium)
-            Gauge(num(best.costKrw), "원", 84.sp)
-            Text("${one(p.quote.kwh)}kWh × ${unitPrice(best.effectiveUnitPrice)}", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
-            p.quote.savingVsMoe?.takeIf { it > 0 }?.let {
-                Text("환경부 카드보다 ${won(it)} 적게 내요", color = EvFitColors.Saving, style = MaterialTheme.typography.titleMedium)
+            Column(
+                Modifier.weight(1f).clip(RoundedCornerShape(24.dp)).background(EvFitColors.Panel).padding(32.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Text("예상 금액", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.titleMedium)
+                Gauge(num(best.costKrw), "원", 84.sp)
+                Text("${one(p.quote.kwh)}kWh × ${unitPrice(best.effectiveUnitPrice)}", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
+                p.quote.savingVsMoe?.takeIf { it > 0 }?.let {
+                    Text("환경부 카드보다 ${won(it)} 적게 내요", color = EvFitColors.Saving, style = MaterialTheme.typography.titleMedium)
+                }
+                Hairline()
+                // 같은 차종 기대 곡선으로 본 이번 충전 — 시작·목표 SOC 구간과 예상 시간
+                val from = s.soc ?: UiState.ASSUMED_SOC
+                val target = s.wallet.targetSoc
+                val expected = s.data?.benchFor(s.wallet.vehicleModel)?.bands?.get(AppData.chargerClass(p.station.maxKw).toString())
+                val expMin = expected?.let { ex ->
+                    (from until target).sumOf { soc -> 0.01 * s.batteryKwh / (ex.firstOrNull { soc >= it.from && soc < it.to }?.median ?: 100.0) * 60 }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${from}%에서 ${target}%까지", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f).alignByBaseline())
+                    expMin?.let {
+                        Text("약", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                        Gauge("${it.toInt()}", "분", 36.sp, modifier = Modifier.alignByBaseline())
+                    }
+                }
+                if (expected != null) {
+                    SocSpeedChart(expected, emptyList(), from, target, Modifier.weight(1f), height = 220.dp, compact = true)
+                    SyntheticLabel("같은 차종 기대 속도(시연용 합성 데이터)로 계산했어요")
+                } else {
+                    Box(Modifier.weight(1f))
+                }
+                if (s.demoMode) EvButton("충전 시작(시연)", { vm.startDemoCharging() }, Modifier.fillMaxWidth())
+                else Text("충전 커넥터를 꽂으면 자동으로 충전 기록을 시작해요", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
             }
-            Hairline()
-            // 같은 차종 기대 곡선으로 본 이번 충전 — 시작·목표 SOC 구간과 예상 시간
-            val from = s.soc ?: UiState.ASSUMED_SOC
-            val target = s.wallet.targetSoc
-            val expected = s.data?.benchFor(s.wallet.vehicleModel)?.bands?.get(AppData.chargerClass(p.station.maxKw).toString())
-            val expMin = expected?.let { ex ->
-                (from until target).sumOf { soc -> 0.01 * s.batteryKwh / (ex.firstOrNull { soc >= it.from && soc < it.to }?.median ?: 100.0) * 60 }
-            }
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("${from}%에서 ${target}%까지", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
-                expMin?.let { Gauge("약 ${it.toInt()}", "분", 36.sp) }
-            }
-            if (expected != null) {
-                SocSpeedChart(expected, emptyList(), from, target, Modifier.weight(1f), height = 220.dp, compact = true)
-                SyntheticLabel("같은 차종 기대 속도(시연용 합성 데이터)로 계산했어요")
-            } else {
-                Box(Modifier.weight(1f))
-            }
-            if (s.demoMode) EvButton("충전 시작(시연)", { vm.startDemoCharging() }, Modifier.fillMaxWidth())
-            else Text("충전 커넥터를 꽂으면 자동으로 충전 기록을 시작해요", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }

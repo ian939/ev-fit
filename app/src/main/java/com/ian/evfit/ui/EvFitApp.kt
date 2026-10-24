@@ -146,8 +146,11 @@ private fun TopBar(s: UiState, vm: AppViewModel) {
         Modifier.fillMaxWidth().height(72.dp).padding(horizontal = 32.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        EvFitWordmark(28)
-        Text(s.wallet.vehicleModel ?: "차종을 지갑에서 골라 주세요", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        // 워드마크와 차종은 같은 기준선에, 그 묶음은 줄 가운데에
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            EvFitWordmark(28, Modifier.alignByBaseline())
+            Text(s.wallet.vehicleModel ?: "차종을 지갑에서 골라 주세요", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+        }
         Spacer(Modifier.weight(1f))
         if (s.restricted) Badge("주행 중", bg = EvFitColors.CardAlt, fg = EvFitColors.Warning)
         if (s.demoMode) Badge("시연 모드", bg = EvFitColors.CardAlt, fg = EvFitColors.Warning)

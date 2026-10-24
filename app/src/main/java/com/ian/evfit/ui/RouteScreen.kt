@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -65,7 +66,7 @@ private fun modeCaption(mode: RouteMode, kwh: Double): String = when (mode) {
 @Composable
 private fun RoutePanel(s: UiState, vm: AppViewModel) {
     val trip = s.trip
-    Column(Modifier.fillMaxSize().padding(horizontal = 28.dp, vertical = 22.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 32.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         StatusStrip(s)
         Segmented(RouteMode.entries.map { it.label }, trip.mode.ordinal, { vm.setMode(RouteMode.entries[it]) }, Modifier.fillMaxWidth())
         Text(modeCaption(trip.mode, trip.kwh), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
@@ -151,26 +152,30 @@ private fun RankRow(s: UiState, index: Int, c: CorridorStation, selected: Boolea
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         RankMark(index + 1, selected)
+        // 이름↔기준 값, 속성↔금액을 줄마다 같은 기준선에 둔다
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(c.station.name, color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(c.station.name, Modifier.weight(1f).alignByBaseline(), color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val m = Modifier.alignByBaseline()
+                when (s.trip.mode) {
+                    RouteMode.FIT -> Gauge(one(c.ranked.fit), "FIT", 30.sp, modifier = m)
+                    RouteMode.ON_ROUTE -> Gauge(if (c.onRoute) "0" else "${c.ranked.detourMin.toInt()}", "분 우회", 30.sp, modifier = m)
+                    RouteMode.PRICE -> Gauge(num(c.costKrw), "원", 30.sp, modifier = m)
+                    RouteMode.FAST -> Gauge("${c.totalMin.toInt()}", "분 소요", 30.sp, modifier = m)
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(operator, color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                Text("${c.station.maxKw}kW", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
-                if (s.trip.line != null) Text("${c.alongKm.toInt()}km 지점", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                val sub = MaterialTheme.typography.bodySmall
+                Text(operator, Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = sub, maxLines = 1)
+                Text("${c.station.maxKw}kW", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = sub)
+                if (s.trip.line != null) Text("${c.alongKm.toInt()}km 지점", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = sub)
                 Text(
-                    if (c.onRoute) "경로 위" else "우회 ${c.ranked.detourMin.toInt()}분",
-                    color = if (c.onRoute) EvFitColors.Saving else EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                    if (c.onRoute) "경로 위" else "우회 ${c.ranked.detourMin.toInt()}분", Modifier.alignByBaseline(),
+                    color = if (c.onRoute) EvFitColors.Saving else EvFitColors.TextSecondary, style = sub,
                 )
+                Spacer(Modifier.weight(1f))
+                if (s.trip.mode != RouteMode.PRICE) Text(won(c.costKrw), Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
             }
-        }
-        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            when (s.trip.mode) {
-                RouteMode.FIT -> Gauge(one(c.ranked.fit), "FIT", 30.sp)
-                RouteMode.ON_ROUTE -> Gauge(if (c.onRoute) "0" else "${c.ranked.detourMin.toInt()}", "분 우회", 30.sp)
-                RouteMode.PRICE -> Gauge(num(c.costKrw), "원", 30.sp)
-                RouteMode.FAST -> Gauge("${c.totalMin.toInt()}", "분 소요", 30.sp)
-            }
-            if (s.trip.mode != RouteMode.PRICE) Text(won(c.costKrw), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -184,17 +189,17 @@ private fun SelectionFooter(s: UiState, vm: AppViewModel, c: CorridorStation) {
         Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EvFitColors.Bg).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("${best.credential.label}로 결제", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text("${best.credential.label}로 결제", Modifier.weight(1f).alignByBaseline(), color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Gauge(num(best.costKrw), "원", 40.sp, modifier = Modifier.alignByBaseline())
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    "${unitPrice(best.effectiveUnitPrice)}/kWh${best.appliedPlan?.let { "  ${it.name}" } ?: ""}",
+                    "${unitPrice(best.effectiveUnitPrice)}/kWh${best.appliedPlan?.let { "  ${it.name}" } ?: ""}", Modifier.weight(1f).alignByBaseline(),
                     color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium,
                 )
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Gauge(num(best.costKrw), "원", 40.sp)
-                if (saving > 0) Text("환경부 카드보다 ${won(saving)} 적게", color = EvFitColors.Saving, style = MaterialTheme.typography.labelMedium)
+                if (saving > 0) Text("환경부 카드보다 ${won(saving)} 적게", Modifier.alignByBaseline(), color = EvFitColors.Saving, style = MaterialTheme.typography.labelMedium)
             }
         }
         moeOnly?.let {
@@ -218,16 +223,17 @@ private fun StationPanel(s: UiState, vm: AppViewModel, c: CorridorStation) {
     val q = vm.quoteFor(station) ?: c.ranked.quote
     val operator = s.data?.operatorName(station.bid) ?: ""
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp, vertical = 16.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 32.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
         BackRow("목록") { vm.closeDetail() }
         Text(station.name, color = EvFitColors.TextPrimary, style = MaterialTheme.typography.headlineMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
-            Attr("사업자", operator)
-            Attr("최대 출력", "${station.maxKw}kW")
-            Attr(if (s.trip.line != null) "경로 위치" else "거리", if (s.trip.line != null) "${c.alongKm.toInt()}km 지점" else "${one(c.offsetKm)}km")
-            Attr("우회", if (c.onRoute) "경로 위" else "${c.ranked.detourMin.toInt()}분(추정)", valueColor = if (c.onRoute) EvFitColors.Saving else EvFitColors.TextPrimary)
+        // 속성 4열과 아래 '같은 차종 경험' 3열은 같은 격자(1.4 : 1 : 1 : 1)에 놓아 세로줄을 맞춘다
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Attr("사업자", operator, Modifier.weight(1.4f))
+            Attr("최대 출력", "${station.maxKw}kW", Modifier.weight(1f))
+            Attr(if (s.trip.line != null) "경로 위치" else "거리", if (s.trip.line != null) "${c.alongKm.toInt()}km 지점" else "${one(c.offsetKm)}km", Modifier.weight(1f))
+            Attr("우회", if (c.onRoute) "경로 위" else "${c.ranked.detourMin.toInt()}분(추정)", Modifier.weight(1f), valueColor = if (c.onRoute) EvFitColors.Saving else EvFitColors.TextPrimary)
         }
         Text(station.addr, color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
 
@@ -254,17 +260,15 @@ private fun StationPanel(s: UiState, vm: AppViewModel, c: CorridorStation) {
         Text("${one(q.kwh)}kWh 충전 기준", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         val maxCost = (q.options.map { it.costKrw } + listOfNotNull(q.moeReferenceKrw)).maxOrNull()?.coerceAtLeast(1) ?: 1
         q.options.forEachIndexed { i, o ->
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Column(Modifier.weight(1f)) {
-                        Text(o.credential.label, color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "${unitPrice(o.effectiveUnitPrice)}/kWh${o.appliedPlan?.let { "  ${it.name}" } ?: ""}",
-                            color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Gauge(num(o.costKrw), "원", 28.sp, color = if (i == 0) EvFitColors.TextPrimary else EvFitColors.TextSecondary)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(o.credential.label, Modifier.weight(1f).alignByBaseline(), color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall)
+                    Gauge(num(o.costKrw), "원", 28.sp, color = if (i == 0) EvFitColors.TextPrimary else EvFitColors.TextSecondary, modifier = Modifier.alignByBaseline())
                 }
+                Text(
+                    "${unitPrice(o.effectiveUnitPrice)}/kWh${o.appliedPlan?.let { "  ${it.name}" } ?: ""}",
+                    color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall,
+                )
                 ProgressBar(o.costKrw.toFloat() / maxCost, color = if (i == 0) EvFitColors.FitBlueFill else EvFitColors.TextSecondary.copy(alpha = 0.55f), height = 8)
                 o.notes.forEach { Text(it, color = EvFitColors.Warning, style = MaterialTheme.typography.bodySmall) }
             }
@@ -284,10 +288,11 @@ private fun StationPanel(s: UiState, vm: AppViewModel, c: CorridorStation) {
         if (bench != null) {
             val cls = AppData.chargerClass(station.maxKw)
             Text("같은 차종의 이 충전소 경험", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                Column { Text("충전 성공률", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium); Gauge(one(c.ranked.successPct), "%", 40.sp) }
-                Column { Text("${cls}kW급 평균 속도", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium); Gauge("${(bench.avgKwByClass[cls.toString()] ?: 0.0).toInt()}", "kW", 40.sp) }
-                Column { Text("만족도", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium); Gauge(one(bench.satisfaction), "/ 5", 40.sp) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Column(Modifier.weight(1.4f)) { Text("충전 성공률", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium); Gauge(one(c.ranked.successPct), "%", 40.sp) }
+                Column(Modifier.weight(1f)) { Text("${cls}kW급 평균", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium); Gauge("${(bench.avgKwByClass[cls.toString()] ?: 0.0).toInt()}", "kW", 40.sp) }
+                Column(Modifier.weight(1f)) { Text("만족도", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium); Gauge(one(bench.satisfaction), "/ 5", 40.sp) }
+                Spacer(Modifier.weight(1f))
             }
             SyntheticLabel()
         }

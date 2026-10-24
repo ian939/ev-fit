@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -54,21 +55,22 @@ fun ChargingScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
             if (c.simulated) EvButton("충전 끝내기(시연)", { vm.finishSession() }, Modifier.fillMaxWidth(), secondary = true)
             else Text("커넥터를 뽑거나 목표 충전량에 닿으면 자동으로 끝나요", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
         }
-        Column(Modifier.weight(1.1f), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(44.dp)) {
-                Metric("충전량", one(c.kwh), "kWh")
-                Metric("지금까지", num(c.costKrw), "원")
+        // 숫자 4개는 2×2 같은 폭 칸에, 차트 카드는 남은 높이를 채워 왼쪽 버튼과 아래 선을 맞춘다
+        Column(Modifier.weight(1.1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Metric("충전량", one(c.kwh), "kWh", Modifier.weight(1f))
+                Metric("지금까지", num(c.costKrw), "원", Modifier.weight(1f))
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(44.dp)) {
-                Metric("충전 속도", c.instantKw?.let { "${it.toInt()}" } ?: "—", "kW")
-                Metric("남은 시간", remainMin?.let { "${it.toInt().coerceAtLeast(1)}" } ?: "—", "분")
+            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                Metric("충전 속도", c.instantKw?.let { "${it.toInt()}" } ?: "—", "kW", Modifier.weight(1f))
+                Metric("남은 시간", remainMin?.let { "${it.toInt().coerceAtLeast(1)}" } ?: "—", "분", Modifier.weight(1f))
             }
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(EvFitColors.Card).padding(20.dp),
+                Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(20.dp)).background(EvFitColors.Card).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text("같은 차종 기대 구간과 지금 내 속도", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleSmall)
-                SocSpeedChart(expected, curvePoints(c.samples, s.batteryKwh, c.station.maxKw * 1.05), c.fromSoc, target, height = 260.dp, compact = true)
+                SocSpeedChart(expected, curvePoints(c.samples, s.batteryKwh, c.station.maxKw * 1.05), c.fromSoc, target, Modifier.weight(1f), height = 260.dp, compact = true)
                 SyntheticLabel("기대 구간은 시연용 합성 데이터예요")
             }
         }
@@ -76,8 +78,8 @@ fun ChargingScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
 }
 
 @Composable
-private fun Metric(label: String, value: String, unit: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun Metric(label: String, value: String, unit: String, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         Gauge(value, unit, 56.sp)
     }

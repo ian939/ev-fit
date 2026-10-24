@@ -252,7 +252,8 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
         }
 
         // 왼쪽 위: 남은 거리
-        Column(Modifier.align(Alignment.TopStart).padding(24.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        // 왼쪽 글자는 상단 줄 워드마크와 같은 32dp 선에, 위는 오른쪽 패널 첫 줄과 같은 24dp에 맞춘다
+        Column(Modifier.align(Alignment.TopStart).padding(start = 32.dp, top = 24.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             val line = trip.line
             if (line != null) {
                 Text("${s.route?.destination?.name ?: "목적지"}까지", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
@@ -266,7 +267,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
         if (s.demoMode && !trip.driving) {
             Text(
                 if (s.route == null) "시연 시작" else "처음부터",
-                modifier = Modifier.align(Alignment.TopEnd).padding(20.dp).clip(RoundedCornerShape(14.dp))
+                modifier = Modifier.align(Alignment.TopEnd).padding(top = 24.dp, end = 24.dp).clip(RoundedCornerShape(14.dp))
                     .background(if (s.route == null) EvFitColors.ActionBg else EvFitColors.CardAlt)
                     .clickable { vm.startDemo() }.padding(horizontal = 22.dp, vertical = 16.dp),
                 color = if (s.route == null) Color.White else EvFitColors.TextPrimary, style = MaterialTheme.typography.labelLarge,

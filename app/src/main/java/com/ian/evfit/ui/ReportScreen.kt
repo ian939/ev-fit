@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -59,8 +62,11 @@ fun ReportScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
 
 /** 라벨 위, 큰 숫자, 아래 설명 */
 @Composable
-private fun Instrument(label: String, value: String, unit: String?, caption: String? = null, color: Color = EvFitColors.TextPrimary, captionColor: Color = EvFitColors.TextSecondary) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun Instrument(
+    label: String, value: String, unit: String?, caption: String? = null,
+    color: Color = EvFitColors.TextPrimary, captionColor: Color = EvFitColors.TextSecondary, modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
         Gauge(value, unit, 52.sp, color)
         caption?.let { Text(it, color = captionColor, style = MaterialTheme.typography.labelMedium) }
@@ -129,7 +135,7 @@ private fun SessionReport(s: UiState, vm: AppViewModel) {
         }
         Instrument("평균 속도", avgKw?.let { "${it.toInt()}" } ?: "—", "kW", expAvg?.let { "기대 ${it.toInt()}kW" })
         Instrument("걸린 시간", "${minutes.toInt()}", "분", expMinutes?.let { "기대 ${it.toInt()}분" })
-        Instrument("같은 차종 중", topPct?.let { "상위 ${it.toInt().coerceIn(1, 99)}" } ?: "—", "%", "시연용 합성 데이터", captionColor = EvFitColors.Warning)
+        Instrument("같은 차종 중 상위", topPct?.let { "${it.toInt().coerceIn(1, 99)}" } ?: "—", "%", "시연용 합성 데이터", captionColor = EvFitColors.Warning)
     }
 
     Panel(Modifier.fillMaxWidth()) {
@@ -143,14 +149,16 @@ private fun SessionReport(s: UiState, vm: AppViewModel) {
         SyntheticLabel("같은 차종 기대 구간은 시연용 합성 데이터예요")
     }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        Panel(Modifier.weight(1.25f)) {
+    // 나란한 두 카드는 높이를 맞추고, 왼쪽 설명은 오른쪽 마지막 줄과 같은 바닥에 둔다
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        Panel(Modifier.weight(1.25f).fillMaxHeight()) {
             Text("구간별 내 속도와 기대 중앙값의 차이", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
             if (rows.isEmpty()) {
                 Muted("충전 중 SOC 기록이 부족해 구간 속도를 계산하지 못했어요")
             } else {
                 BandDiffStrip(rows.map { Triple("${it.my.fromSoc}–${it.my.toSoc}%", it.my.avgKw.toInt(), it.exp?.median?.toInt()) })
                 val worst = rows.filter { it.exp != null }.minByOrNull { it.my.avgKw - it.exp!!.median }
+                Spacer(Modifier.weight(1f))
                 Text(
                     when {
                         ok -> "모든 구간이 같은 차종 기대 구간 안에 들어왔어요. 70% 이후 느려지는 것도 같은 차종과 같은 흐름이에요."
@@ -161,7 +169,7 @@ private fun SessionReport(s: UiState, vm: AppViewModel) {
                 )
             }
         }
-        Receipt(s, r, Modifier.weight(1f))
+        Receipt(s, r, Modifier.weight(1f).fillMaxHeight())
     }
 }
 
@@ -223,20 +231,19 @@ private fun ModelReport(s: UiState) {
         if (minutes > 0) it.kwh / (minutes / 60.0) else null
     }?.takeIf { station == null || it <= station.maxKw * 1.05 }
 
-    Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        Column(Modifier.weight(1.35f), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Gauge(num(bench.members.toLong()), "명", 76.sp, EvFitColors.AccentText)
-                Text("같은 ${bench.model}을 타는 회원이에요", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(bottom = 14.dp))
-            }
-            Panel(Modifier.fillMaxWidth()) {
-                Text("${cls}kW급 충전 평균 속도 분포", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
-                Muted(if (myAvg != null) "내 최근 충전은 회원 분포에서 이 위치예요" else "충전을 마치면 내 위치를 표시해요")
-                MemberDistribution(mean, sd, myAvg, height = 420.dp)
-                SyntheticLabel()
-            }
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Gauge(num(bench.members.toLong()), "명", 76.sp, EvFitColors.AccentText, Modifier.alignByBaseline())
+        Text("같은 ${bench.model}을 타는 회원이에요", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge)
+    }
+    // 왼쪽 분포 카드와 오른쪽 두 카드 묶음의 위·아래 선을 맞춘다
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        Panel(Modifier.weight(1.35f).fillMaxHeight()) {
+            Text("${cls}kW급 충전 평균 속도 분포", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
+            Muted(if (myAvg != null) "내 최근 충전은 회원 분포에서 이 위치예요" else "충전을 마치면 내 위치를 표시해요")
+            MemberDistribution(mean, sd, myAvg, height = 420.dp)
+            SyntheticLabel()
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Panel(Modifier.fillMaxWidth()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
                     Instrument("충전 성공률", one(bench.successRatePct), "%")
@@ -244,7 +251,7 @@ private fun ModelReport(s: UiState) {
                 }
                 SyntheticLabel()
             }
-            Panel(Modifier.fillMaxWidth()) {
+            Panel(Modifier.fillMaxWidth().weight(1f)) {
                 Text("충전기 용량별 평균 속도", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
                 val maxAvg = bench.avgKwByClass.values.maxOrNull() ?: 1.0
                 listOf(50, 100, 200, 350).forEach { c ->
@@ -268,14 +275,19 @@ private fun MonthReport(s: UiState) {
     val mine = s.records.filter { YearMonth.from(Instant.ofEpochMilli(it.startedAt).atZone(ZoneId.systemDefault())).toString() == month }
     val spend = mine.sumOf { it.costKrw }
     val saved = mine.sumOf { (it.moeReferenceKrw ?: it.costKrw) - it.costKrw }
-    Row(horizontalArrangement = Arrangement.spacedBy(56.dp)) {
-        Instrument("${month.replace("-", "년 ")}월 지출", num(spend), "원")
-        Instrument("아낀 돈", num(saved), "원", "환경부 카드로 냈을 때와 비교", color = EvFitColors.Saving)
-        Instrument("충전", "${mine.size}", "회")
-        Instrument("충전량", one(mine.sumOf { it.kwh }), "kWh")
-    }
+    // 지표 4개는 아래 두 카드와 같은 폭(1.4 : 1)으로 나눠 카드 왼쪽 선에 맞춘다
     Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        Panel(Modifier.weight(1.4f)) {
+        Row(Modifier.weight(1.4f)) {
+            Instrument("${month.replace("-", "년 ")}월 지출", num(spend), "원", modifier = Modifier.weight(1f))
+            Instrument("아낀 돈", num(saved), "원", "환경부 카드로 냈을 때와 비교", color = EvFitColors.Saving, modifier = Modifier.weight(1f))
+        }
+        Row(Modifier.weight(1f)) {
+            Instrument("충전", "${mine.size}", "회", modifier = Modifier.weight(1f))
+            Instrument("충전량", one(mine.sumOf { it.kwh }), "kWh", modifier = Modifier.weight(1f))
+        }
+    }
+    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        Panel(Modifier.weight(1.4f).fillMaxHeight()) {
             Text("충전별 금액", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
             if (mine.isEmpty()) Muted("이번 달 충전 기록이 아직 없어요")
             val maxRef = mine.maxOfOrNull { it.moeReferenceKrw ?: it.costKrw }?.coerceAtLeast(1) ?: 1
@@ -300,7 +312,7 @@ private fun MonthReport(s: UiState) {
             }
             if (mine.isNotEmpty()) Text("위 막대는 환경부 카드, 아래 막대는 실제로 낸 금액이에요", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        Panel(Modifier.weight(1f)) {
+        Panel(Modifier.weight(1f).fillMaxHeight()) {
             Text("구독 약정", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
             if (s.wallet.subscriptions.isEmpty()) Muted("지갑에 구독이 없어요")
             s.wallet.subscriptions.forEach { sub ->

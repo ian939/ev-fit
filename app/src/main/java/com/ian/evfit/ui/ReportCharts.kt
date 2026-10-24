@@ -75,7 +75,9 @@ fun SocSpeedChart(
     val top = listOfNotNull(expected?.maxOfOrNull { it.p75 }, mine.maxOfOrNull { it.kw }).maxOrNull() ?: 100.0
     val maxY = (ceil(top * 1.12 / 50.0) * 50.0).coerceAtLeast(50.0)
     Canvas(modifier.fillMaxWidth().height(height)) {
-        val left = 52 * d
+        // 왼쪽 여백은 세로 눈금 글자 폭만큼만 — 가장 긴 글자의 왼쪽 끝이 카드 글자선에 온다
+        val yTicks = generateSequence(0.0) { it + 50.0 }.takeWhile { it <= maxY + 0.1 }.map { it to measurer.measure("${it.toInt()}", axis) }.toList()
+        val left = yTicks.maxOf { it.second.size.width } + 10 * d
         val bottom = size.height - 30 * d
         val right = size.width - 8 * d
         val topY = 10 * d
@@ -83,12 +85,9 @@ fun SocSpeedChart(
         fun y(kw: Double) = (bottom - (bottom - topY) * kw / maxY).toFloat()
 
         // 가로 눈금(50kW마다)과 세로 눈금(20%마다)
-        var g = 0.0
-        while (g <= maxY + 0.1) {
+        yTicks.forEach { (g, lay) ->
             drawLine(EvFitColors.Hairline, Offset(left, y(g)), Offset(right, y(g)), 1.2f * d)
-            val lay = measurer.measure("${g.toInt()}", axis)
             drawText(lay, topLeft = Offset(left - 10 * d - lay.size.width, y(g) - lay.size.height / 2f))
-            g += 50.0
         }
         for (soc in 0..100 step 20) {
             val lay = measurer.measure("$soc", axis)
