@@ -267,7 +267,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 val cands = StationRanker.nearby(d.stations, point, radius, limit)
                 when (f.sort) {
                     FinderSort.FIT -> rankFit(cands, kwh)
-                    FinderSort.PRICE -> StationRanker.rank(cands, kwh, s.wallet, d.table, d.plans, d::operatorName)
+                    FinderSort.PRICE -> rankFit(cands, kwh)
+                        .sortedWith(compareBy<RankedStation> { it.quote.best!!.costKrw }.thenBy { it.distanceKm })
                     FinderSort.DISTANCE -> rankFit(cands, kwh).sortedBy { it.distanceKm }
                 }
             }

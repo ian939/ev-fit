@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +60,10 @@ fun FinderScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
                 EvButton("지갑 확인", { vm.selectTab(Tab.WALLET) }, secondary = true)
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            // 정렬·기준을 바꾸면 LazyColumn이 key로 이전 첫 항목 위치를 유지해 새 1위가 가려지므로 맨 위로 돌린다
+            val listState = rememberLazyListState()
+            LaunchedEffect(f.results) { listState.scrollToItem(0) }
+            LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 itemsIndexed(f.results, key = { _, r -> r.quote.station.id }) { i, r ->
                     StationRow(s, r, topFit = f.sort == FinderSort.FIT && i == 0, wide = wide) { vm.openDetail(r.quote.station.id) }
                 }
