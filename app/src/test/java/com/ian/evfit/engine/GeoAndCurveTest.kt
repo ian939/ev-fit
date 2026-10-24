@@ -25,6 +25,18 @@ class GeoAndCurveTest {
     }
 
     @Test
+    fun 충전기_최대출력을_넘는_SOC_급변_쌍은_속도에서_뺀다() {
+        // 35→55%를 10초에(콘솔 순간 변경) = 16.72kWh÷(10/3600h) ≈ 6019kW → 50kW급(상한 52.5)에서 불가능해 제외
+        // 55→56%를 2분에 = 0.836kWh÷(120/3600h) = 25.08kW → 50~60% 구간에 남는다
+        val bands = ChargeCurve.bandSpeeds(
+            listOf(SocSample(0, 35), SocSample(10_000, 55), SocSample(130_000, 56)), 83.6, maxKw = 52.5,
+        )
+        assertEquals(1, bands.size)
+        assertEquals(50, bands[0].fromSoc)
+        assertEquals(25.08, bands[0].avgKw, 0.01)
+    }
+
+    @Test
     fun 최저가_랭킹은_결제불가_충전소를_빼고_금액순() {
         val candidates = listOf(
             station("JA", Stage.S4) to 0.0,

@@ -12,15 +12,21 @@ object ChargeCurve {
     /**
      * 연속 샘플 쌍 (a, b)에서 SOC와 시간이 모두 늘어난 것만 쓴다.
      * 쌍은 a.soc가 속한 구간에 넣고, 구간별 에너지 Σ(ΔSOC/100×용량) ÷ 시간 Σ(Δt) = 평균 kW.
+     * 쌍의 속도가 maxKw(충전기 최대 출력)를 넘으면 SOC가 순간 바뀐 것(Virtual Console 조작 등)이라 뺀다.
      */
-    fun bandSpeeds(samples: List<SocSample>, batteryKwh: Double, bandSize: Int = 10): List<BandSpeed> {
+    fun bandSpeeds(
+        samples: List<SocSample>, batteryKwh: Double, bandSize: Int = 10, maxKw: Double = Double.POSITIVE_INFINITY,
+    ): List<BandSpeed> {
         val energy = sortedMapOf<Int, Double>()
         val hours = sortedMapOf<Int, Double>()
         samples.sortedBy { it.tMillis }.zipWithNext().forEach { (a, b) ->
             if (b.soc > a.soc && b.tMillis > a.tMillis) {
+                val e = (b.soc - a.soc) / 100.0 * batteryKwh
+                val h = (b.tMillis - a.tMillis) / 3_600_000.0
+                if (e / h > maxKw) return@forEach
                 val band = a.soc / bandSize * bandSize
-                energy[band] = (energy[band] ?: 0.0) + (b.soc - a.soc) / 100.0 * batteryKwh
-                hours[band] = (hours[band] ?: 0.0) + (b.tMillis - a.tMillis) / 3_600_000.0
+                energy[band] = (energy[band] ?: 0.0) + e
+                hours[band] = (hours[band] ?: 0.0) + h
             }
         }
         return energy.map { (band, e) -> BandSpeed(band, band + bandSize, e / hours.getValue(band)) }

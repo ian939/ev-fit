@@ -402,7 +402,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val dtH = (last.tMillis - a.tMillis) / 3_600_000.0
             if (dtH > 0) (last.soc - a.soc) / 100.0 * s.batteryKwh / dtH else null
         } else null
-        _ui.update { it.copy(soc = last.soc, session = sess.copy(soc = last.soc, kwh = kwh, costKrw = cost, instantKw = kw, samples = samples)) }
+        // 충전기 최대 출력을 넘는 값은 SOC 순간 변경(Virtual Console 등)이라 표시하지 않는다
+        val shownKw = kw?.takeIf { it <= sess.station.maxKw * 1.05 }
+        _ui.update { it.copy(soc = last.soc, session = sess.copy(soc = last.soc, kwh = kwh, costKrw = cost, instantKw = shownKw, samples = samples)) }
     }
 
     fun finishSession() {

@@ -79,21 +79,28 @@ private fun SessionReport(s: UiState, wide: Boolean) {
         return
     }
     val battery = s.batteryKwh
-    val bands = ChargeCurve.bandSpeeds(r.samples, battery)
     val station = data.station(r.stationId)
+    // 충전기 최대 출력(+5%)을 넘는 속도는 SOC 순간 변경이라 계산에서 뺀다
+    val maxKw = station?.maxKw?.times(1.05) ?: Double.POSITIVE_INFINITY
+    val bands = ChargeCurve.bandSpeeds(r.samples, battery, maxKw = maxKw)
     val cls = AppData.chargerClass(station?.maxKw ?: 200)
     val bench = data.benchFor(s.wallet.vehicleModel)
     val expected = bench?.bands?.get(cls.toString())
     val rows = bands.map { b -> BandRow(b, expected?.firstOrNull { it.from == b.fromSoc }) }
-    val ok = rows.all { it.exp == null || it.my.avgKw in it.exp.p25 * 0.9..it.exp.p75 * 1.1 }
+    val ok = rows.all { it.exp == null || it.my.avgKw >= it.exp.p25 * 0.9 }
     val minutes = if (r.samples.size >= 2) (r.samples.last().tMillis - r.samples.first().tMillis) / 60_000.0 else 0.0
     val avgKw = if (minutes > 0) r.kwh / (minutes / 60.0) else 0.0
+    val headline = when {
+        rows.isEmpty() -> "속도를 잴 만큼 기록이 쌓이지 않았어요"
+        ok -> "기대한 만큼 나왔어요"
+        else -> "일부 구간이 기대보다 낮았어요"
+    }
 
-    Text(if (ok) "기대한 만큼 나왔어요" else "일부 구간이 기대보다 낮았어요", style = MaterialTheme.typography.headlineMedium, color = EvFitColors.TextPrimary)
+    Text(headline, style = MaterialTheme.typography.headlineMedium, color = EvFitColors.TextPrimary)
     Muted("${r.stationName} · 같은 ${s.wallet.vehicleModel ?: "차종"} 회원 ${bench?.members ?: 0}명의 SOC 구간별 기대 속도와 내 충전을 겹쳐 봤어요")
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Badge("내 충전 구간 ${r.fromSoc}% → ${r.toSoc}%")
-        Badge("평균 ${avgKw.toInt()}kW", bg = EvFitColors.CardAlt)
+        Badge(if (avgKw > 0 && avgKw <= maxKw) "평균 ${avgKw.toInt()}kW" else "평균 —", bg = EvFitColors.CardAlt)
         Badge("소요 ${minutes.toInt()}분", bg = EvFitColors.CardAlt)
     }
     if (wide) {
