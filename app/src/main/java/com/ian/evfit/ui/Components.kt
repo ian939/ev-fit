@@ -91,7 +91,7 @@ fun EvButton(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text, color = if (enabled) Color.White else EvFitColors.Disabled,
+            text, color = when { !enabled -> EvFitColors.Disabled; secondary -> EvFitColors.TextPrimary; else -> Color.White },
             style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center,
         )
     }
@@ -101,7 +101,7 @@ fun EvButton(
 @Composable
 fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.clip(RoundedCornerShape(16.dp)).background(EvFitColors.Navy).padding(5.dp),
+        modifier.clip(RoundedCornerShape(16.dp)).background(EvFitColors.Bg).padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         options.forEachIndexed { i, label ->
@@ -164,7 +164,7 @@ fun VHairline(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, color: Color = EvFitColors.FitBlueFill, track: Color = EvFitColors.Navy, height: Int = 10) {
+fun ProgressBar(fraction: Float, modifier: Modifier = Modifier, color: Color = EvFitColors.FitBlueFill, track: Color = EvFitColors.Bg, height: Int = 10) {
     Box(modifier.fillMaxWidth().height(height.dp).clip(RoundedCornerShape((height / 2).dp)).background(track)) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).height(height.dp).clip(RoundedCornerShape((height / 2).dp)).background(color))
     }

@@ -30,6 +30,7 @@ import com.ian.evfit.engine.SyntheticStats
 import com.ian.evfit.engine.Wallet
 import com.ian.evfit.platform.PlannedStop
 import com.ian.evfit.platform.RoutePlan
+import com.ian.evfit.ui.theme.EvFitColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -607,6 +608,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
         refreshNextStop()
         refreshCorridor()
+    }
+
+    fun setDarkTheme(on: Boolean) {
+        graph.prefs.darkTheme = on
+        EvFitColors.dark = on
     }
 
     fun loadDemoWallet() = updateWallet(DemoDriver.presetWallet(Prefs.currentMonth()))

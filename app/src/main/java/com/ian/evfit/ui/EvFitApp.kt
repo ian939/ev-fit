@@ -47,7 +47,7 @@ private val TABS = listOf(Tab.ROUTE to "경로", Tab.REPORT to "리포트", Tab.
 fun EvFitApp(vm: AppViewModel) {
     val s by vm.ui.collectAsStateWithLifecycle()
     EvFitTheme {
-        Surface(Modifier.fillMaxSize(), color = EvFitColors.Navy) {
+        Surface(Modifier.fillMaxSize(), color = EvFitColors.Bg) {
             if (s.loading) {
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                     EvFitWordmark(56)
@@ -93,7 +93,7 @@ private fun Padded(content: @Composable () -> Unit) {
 @Composable
 private fun Rail(s: UiState, vm: AppViewModel) {
     Column(
-        Modifier.width(104.dp).fillMaxHeight().background(Color(0xFF051733)).padding(vertical = 20.dp),
+        Modifier.width(104.dp).fillMaxHeight().background(EvFitColors.Rail).padding(vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {

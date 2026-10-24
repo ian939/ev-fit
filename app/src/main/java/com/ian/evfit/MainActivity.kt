@@ -10,6 +10,7 @@ import androidx.activity.viewModels
 import com.ian.evfit.platform.PleosLocationGateway
 import com.ian.evfit.ui.AppViewModel
 import com.ian.evfit.ui.EvFitApp
+import com.ian.evfit.ui.theme.EvFitColors
 
 class MainActivity : ComponentActivity() {
     private val vm: AppViewModel by viewModels()
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this) { if (!vm.back()) moveTaskToBack(true) }
         (application as App).graph.location.start(this)
+        EvFitColors.dark = (application as App).graph.prefs.darkTheme
         setContent { EvFitApp(vm) }
     }
 

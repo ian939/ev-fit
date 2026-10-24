@@ -43,6 +43,10 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_DEMO, true)
         set(v) = sp.edit().putBoolean(KEY_DEMO, v).apply()
 
+    var darkTheme: Boolean
+        get() = sp.getBoolean(KEY_DARK, true)
+        set(v) = sp.edit().putBoolean(KEY_DARK, v).apply()
+
     var records: List<ChargeRecord>
         get() = sp.getString(KEY_RECORDS, null)
             ?.let { runCatching { json.decodeFromString<List<ChargeRecord>>(it) }.getOrNull() } ?: emptyList()
@@ -51,6 +55,7 @@ class Prefs(context: Context) {
     companion object {
         private const val KEY_WALLET = "wallet"
         private const val KEY_DEMO = "demoMode"
+        private const val KEY_DARK = "darkTheme"
         private const val KEY_RECORDS = "records"
 
         fun currentMonth(): String = YearMonth.now().toString()

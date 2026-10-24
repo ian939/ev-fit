@@ -119,7 +119,8 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
     val placeStyle = TextStyle(fontFamily = Wanted, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = EvFitColors.TextPrimary)
     val calloutStyle = TextStyle(fontFamily = Wanted, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = EvFitColors.TextPrimary)
     val reachStyle = TextStyle(fontFamily = Wanted, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = EvFitColors.Warning)
-    val rankStyle = gauge(22.sp, color = Color.White)
+    val rankStyle = gauge(22.sp, color = EvFitColors.TextPrimary)
+    val rankOnStyle = gauge(22.sp, color = Color.White)
 
     BoxWithConstraints(modifier.clipToBounds().background(EvFitColors.Sea)) {
         val w = constraints.maxWidth.toFloat()
@@ -169,18 +170,18 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                 polyline(line.slice(0.0, car).map(frame::pt), EvFitColors.TextPrimary.copy(alpha = 0.28f), 5 * d)
                 polyline(line.slice(reachEnd, line.lengthKm).map(frame::pt), EvFitColors.FitBlueFill.copy(alpha = 0.45f), 5 * d,
                     PathEffect.dashPathEffect(floatArrayOf(10 * d, 9 * d)))
-                polyline(inReach, EvFitColors.Navy, 13 * d)
+                polyline(inReach, EvFitColors.Bg, 13 * d)
                 polyline(inReach, EvFitColors.FitBlueFill, 8 * d)
-                polyline(inReach, EvFitColors.TextPrimary.copy(alpha = 0.85f), 2 * d)
+                polyline(inReach, Color.White.copy(alpha = 0.85f), 2 * d)
 
                 // 출발·목적지
                 val start = frame.pt(line.points.first())
-                drawCircle(EvFitColors.Navy, 9 * d, start)
+                drawCircle(EvFitColors.Bg, 9 * d, start)
                 drawCircle(EvFitColors.TextSecondary, 9 * d, start, style = Stroke(3 * d))
                 val end = frame.pt(line.points.last())
                 drawCircle(EvFitColors.TextPrimary, 16 * d, end, style = Stroke(3 * d))
                 drawCircle(EvFitColors.TextPrimary, 7 * d, end)
-                s.route?.destination?.name?.let { label(measurer, it, end + Offset(26 * d, 0f), placeStyle, center = false, plate = EvFitColors.Navy.copy(alpha = 0.85f)) }
+                s.route?.destination?.name?.let { label(measurer, it, end + Offset(26 * d, 0f), placeStyle, center = false, plate = EvFitColors.Bg.copy(alpha = 0.85f)) }
 
                 // 도달 한계 표시(경로에 수직인 짧은 선)
                 if (car + trip.rangeKm < line.lengthKm) {
@@ -190,7 +191,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                     val n = Offset(-dir.y, dir.x)
                     val c = frame.pt(line.pointAt(reachEnd))
                     drawLine(EvFitColors.Warning, c - n * (16 * d), c + n * (16 * d), strokeWidth = 4 * d, cap = StrokeCap.Round)
-                    label(measurer, "주행 가능 끝", c + n * (24 * d), reachStyle, center = false, plate = EvFitColors.Navy.copy(alpha = 0.85f))
+                    label(measurer, "주행 가능 끝", c + n * (24 * d), reachStyle, center = false, plate = EvFitColors.Bg.copy(alpha = 0.85f))
                 }
             }
 
@@ -207,7 +208,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                 val ahead = frame.pt(line.pointAt(trip.carKm + 1.0))
                 val deg = Math.toDegrees(atan2((ahead.y - o.y).toDouble(), (ahead.x - o.x).toDouble())).toFloat()
                 drawCircle(EvFitColors.FitBlueFill.copy(alpha = 0.25f), 26 * d, o)
-                drawCircle(EvFitColors.Navy, 15 * d, o)
+                drawCircle(EvFitColors.Bg, 15 * d, o)
                 rotate(deg, o) {
                     val p = Path().apply {
                         moveTo(o.x + 12 * d, o.y); lineTo(o.x - 8 * d, o.y - 9 * d); lineTo(o.x - 4 * d, o.y); lineTo(o.x - 8 * d, o.y + 9 * d); close()
@@ -225,10 +226,10 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                 val o = pickPos[i]
                 val on = p.station.id == trip.selectedId
                 if (on) drawCircle(EvFitColors.TextPrimary, 30 * d, o, style = Stroke(2.5f * d))
-                drawCircle(EvFitColors.Navy, 22 * d, o)
-                drawCircle(if (on) EvFitColors.ActionBg else EvFitColors.Navy, 19 * d, o)
+                drawCircle(EvFitColors.Bg, 22 * d, o)
+                drawCircle(if (on) EvFitColors.ActionBg else EvFitColors.Bg, 19 * d, o)
                 drawCircle(EvFitColors.FitBlueFill, 19 * d, o, style = Stroke(3.5f * d))
-                label(measurer, "${i + 1}", o, rankStyle)
+                label(measurer, "${i + 1}", o, if (on) rankOnStyle else rankStyle)
             }
 
             // 고른 충전소 말풍선 — 이름과 탭 기준 값
@@ -268,7 +269,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                 modifier = Modifier.align(Alignment.TopEnd).padding(20.dp).clip(RoundedCornerShape(14.dp))
                     .background(if (s.route == null) EvFitColors.ActionBg else EvFitColors.CardAlt)
                     .clickable { vm.startDemo() }.padding(horizontal = 22.dp, vertical = 16.dp),
-                color = androidx.compose.ui.graphics.Color.White, style = MaterialTheme.typography.labelLarge,
+                color = if (s.route == null) Color.White else EvFitColors.TextPrimary, style = MaterialTheme.typography.labelLarge,
             )
         }
         // 오른쪽 아래: 출처
@@ -298,8 +299,9 @@ fun CorridorRuler(s: UiState, modifier: Modifier = Modifier) {
     val picks = trip.ranked.take(3)
     val axis = TextStyle(fontFamily = Wanted, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = EvFitColors.TextSecondary)
     val reachStyle = TextStyle(fontFamily = Wanted, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = EvFitColors.Warning)
-    val rankStyle = gauge(18.sp, color = Color.White)
-    Canvas(modifier.background(EvFitColors.Navy)) {
+    val rankStyle = gauge(18.sp, color = EvFitColors.TextPrimary)
+    val rankOnStyle = gauge(18.sp, color = Color.White)
+    Canvas(modifier.background(EvFitColors.Bg)) {
         val left = 40 * d
         val right = size.width - 40 * d
         val y = size.height * 0.52f
@@ -343,9 +345,9 @@ fun CorridorRuler(s: UiState, modifier: Modifier = Modifier) {
             val o = Offset(placed.getValue(i), y - 30 * d)
             val on = p.station.id == trip.selectedId
             drawLine(EvFitColors.FitBlueFill, Offset(x(p.alongKm), y), o, 2 * d)
-            drawCircle(if (on) EvFitColors.ActionBg else EvFitColors.Navy, 15 * d, o)
+            drawCircle(if (on) EvFitColors.ActionBg else EvFitColors.Bg, 15 * d, o)
             drawCircle(EvFitColors.FitBlueFill, 15 * d, o, style = Stroke(3 * d))
-            label(measurer, "${i + 1}", o, rankStyle)
+            label(measurer, "${i + 1}", o, if (on) rankOnStyle else rankStyle)
         }
         // 눈금 글자
         label(measurer, "0", Offset(left, y + 38 * d), axis)

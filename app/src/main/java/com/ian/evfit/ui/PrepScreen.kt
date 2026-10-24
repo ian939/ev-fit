@@ -104,7 +104,7 @@ private fun Step(n: Int, title: String, detail: String, state: StepState) {
         Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
             val ring = when (state) { StepState.DONE -> EvFitColors.Saving; StepState.WARN -> EvFitColors.Warning; StepState.WAIT -> EvFitColors.Hairline }
             Canvas(Modifier.size(42.dp)) { drawCircle(ring, style = Stroke(3.dp.toPx())) }
-            Text("$n", style = gauge(22.sp, color = if (state == StepState.WAIT) EvFitColors.TextSecondary else Color.White))
+            Text("$n", style = gauge(22.sp, color = if (state == StepState.WAIT) EvFitColors.TextSecondary else EvFitColors.TextPrimary))
         }
         Column(Modifier.padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)

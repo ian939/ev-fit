@@ -1,4 +1,4 @@
-// 지갑 — 차종·환경부 카드·회원 사업자·구독(이번 달 사용량)·목표 SOC·시연 모드·데이터 기준일·브랜드 고지
+// 지갑 — 차종·환경부 카드·회원 사업자·구독(이번 달 사용량)·목표 SOC·화면(다크/라이트)·시연 모드·데이터 기준일·브랜드 고지
 package com.ian.evfit.ui
 
 import androidx.compose.foundation.background
@@ -113,6 +113,14 @@ fun WalletScreen(s: UiState, vm: AppViewModel, wide: Boolean) {
             Text("목표 충전량", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(70, 80, 90).forEach { t -> Chip("$t%", w.targetSoc == t) { vm.updateWallet(w.copy(targetSoc = t)) } }
+            }
+        }
+
+        EvCard(Modifier.fillMaxWidth()) {
+            Text("화면", color = EvFitColors.TextPrimary, style = MaterialTheme.typography.titleMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Chip("다크", EvFitColors.dark) { vm.setDarkTheme(true) }
+                Chip("라이트", !EvFitColors.dark) { vm.setDarkTheme(false) }
             }
         }
 

@@ -241,7 +241,7 @@ fun AllowanceRing(usedKwh: Double, capKwh: Double?, modifier: Modifier = Modifie
         if (capKwh == null) {
             drawArc(EvFitColors.FitBlueFill, -90f, 360f, false, tl, sz, style = Stroke(sw, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))))
         } else {
-            drawArc(EvFitColors.Navy, -90f, 360f, false, tl, sz, style = Stroke(sw))
+            drawArc(EvFitColors.Bg, -90f, 360f, false, tl, sz, style = Stroke(sw))
             val left = ((capKwh - usedKwh) / capKwh).coerceIn(0.0, 1.0)
             drawArc(EvFitColors.FitBlueFill, -90f, (360 * left).toFloat(), false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
         }

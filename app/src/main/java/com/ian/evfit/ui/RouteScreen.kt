@@ -131,10 +131,10 @@ private fun RankMark(rank: Int, selected: Boolean) {
     Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
         if (rank <= 3) {
             Canvas(Modifier.size(40.dp)) {
-                drawCircle(if (selected) EvFitColors.ActionBg else EvFitColors.Navy)
+                drawCircle(if (selected) EvFitColors.ActionBg else EvFitColors.Bg)
                 drawCircle(EvFitColors.FitBlueFill, style = Stroke(3.dp.toPx()))
             }
-            Text("$rank", style = gauge(22.sp, color = Color.White))
+            Text("$rank", style = gauge(22.sp, color = if (selected) Color.White else EvFitColors.TextPrimary))
         } else {
             Text("$rank", style = gauge(22.sp, color = EvFitColors.TextSecondary))
         }
@@ -181,7 +181,7 @@ private fun SelectionFooter(s: UiState, vm: AppViewModel, c: CorridorStation) {
     val saving = c.ranked.quote.savingVsMoe ?: 0
     val moeOnly = s.nextStop?.moeOnly?.firstOrNull()?.takeIf { s.nextStop?.atStop?.any { it.quote.station.id == c.station.id } == true }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EvFitColors.Navy).padding(20.dp),
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(EvFitColors.Bg).padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
