@@ -1,4 +1,4 @@
-// EV FIT 화면 상태와 충전 흐름(추천→경유지→충전 준비→충전→리포트)을 관리하는 ViewModel
+// EV FIT 화면 상태와 충전 흐름(경로 회랑 추천→경유지→충전 준비→충전→리포트)을 관리하는 ViewModel
 package com.ian.evfit.ui
 
 import android.app.Application
@@ -10,12 +10,19 @@ import com.ian.evfit.data.AppData
 import com.ian.evfit.data.ChargeRecord
 import com.ian.evfit.data.Prefs
 import com.ian.evfit.demo.DemoDriver
+import com.ian.evfit.engine.CorridorRanker
+import com.ian.evfit.engine.CorridorStation
 import com.ian.evfit.engine.Credential
+import com.ian.evfit.engine.Geo
 import com.ian.evfit.engine.LatLng
 import com.ian.evfit.engine.PayOption
 import com.ian.evfit.engine.PriceEngine
 import com.ian.evfit.engine.Quote
+import com.ian.evfit.engine.RangeModel
 import com.ian.evfit.engine.RankedStation
+import com.ian.evfit.engine.RouteLine
+import com.ian.evfit.engine.RouteMode
+import com.ian.evfit.engine.RouteProjection
 import com.ian.evfit.engine.SocSample
 import com.ian.evfit.engine.Station
 import com.ian.evfit.engine.StationRanker
@@ -32,13 +39,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import kotlin.math.roundToInt
 
-enum class Tab { HOME, FINDER, REPORT, WALLET }
-enum class FinderCenter { ROUTE_STOP, DESTINATION, CURRENT }
-enum class FinderSort { FIT, PRICE, DISTANCE }
+enum class Tab { ROUTE, REPORT, WALLET }
 
 data class Nav(
-    val tab: Tab = Tab.HOME,
+    val tab: Tab = Tab.ROUTE,
     val detailStationId: String? = null,
     val prepOpen: Boolean = false,
     val chargingOpen: Boolean = false,
@@ -49,17 +55,34 @@ data class StopAdvice(
     val stop: PlannedStop,
     val kwh: Double,
     val atStop: List<RankedStation>,
-    val nearby: List<RankedStation>,
     /** 같은 지점에서 내 사업자 계정으로는 결제가 안 되고 환경부 카드만 되는 충전소 */
     val moeOnly: List<RankedStation>,
 )
 
-data class FinderState(
-    val center: FinderCenter = FinderCenter.CURRENT,
-    val sort: FinderSort = FinderSort.FIT,
-    val results: List<RankedStation> = emptyList(),
+/** 지도 화면 상태 — 경로선, 차 위치, 도달 범위, 회랑 후보와 탭 기준 순위 */
+data class TripState(
+    val line: RouteLine? = null,
+    /** 실차 모드: 내비가 경로 좌표를 주지 않아 현재 위치·정차지·목적지를 직선으로 이었다 */
+    val estimated: Boolean = false,
+    val routeSource: String = "",
+    val carKm: Double = 0.0,
+    val rangeKm: Double = 0.0,
+    val mode: RouteMode = RouteMode.FIT,
+    /** 회랑 안 후보 전체(도달 못 하는 곳 포함) — 지도 점 */
+    val all: List<CorridorStation> = emptyList(),
+    /** 도달 가능한 곳을 탭 기준으로 줄 세운 것 */
+    val ranked: List<CorridorStation> = emptyList(),
     val kwh: Double = 0.0,
-)
+    /** 금액 기준 출발 SOC(계획 정차 도착 SOC 또는 현재 SOC) */
+    val basisSoc: Int = 0,
+    val basisAssumed: Boolean = false,
+    val stopKm: Double? = null,
+    val selectedId: String? = null,
+    /** 시연 주행 연출 중 */
+    val driving: Boolean = false,
+) {
+    fun find(id: String?): CorridorStation? = all.firstOrNull { it.station.id == id }
+}
 
 data class PrepState(
     val station: Station,
@@ -89,11 +112,10 @@ data class UiState(
     val restricted: Boolean = false,
     val wallet: Wallet = Wallet(),
     val soc: Int? = null,
-    val socAssumed: Boolean = false,
     val location: LatLng? = null,
     val route: RoutePlan? = null,
     val nextStop: StopAdvice? = null,
-    val finder: FinderState = FinderState(),
+    val trip: TripState = TripState(),
     val prep: PrepState? = null,
     val session: SessionState? = null,
     val lastRecord: ChargeRecord? = null,
@@ -105,6 +127,7 @@ data class UiState(
 ) {
     val batteryKwh: Double get() = wallet.batteryKwh ?: DEFAULT_BATTERY_KWH
     val vehicleAssumed: Boolean get() = wallet.batteryKwh == null
+    val kmPerKwh: Double get() = data?.vehicle(wallet.vehicleModel)?.kmPerKwh ?: RangeModel.DEFAULT_KM_PER_KWH
 
     companion object {
         const val DEFAULT_BATTERY_KWH = 70.0
@@ -121,6 +144,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var lastSpoken: String? = null
     private var demoJob: Job? = null
     private var liveSamples = mutableListOf<SocSample>()
+    private var corridorJob: Job? = null
+    private var lastCorridorAt: LatLng? = null
 
     init {
         viewModelScope.launch {
@@ -136,25 +161,36 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     loading = false, data = data, demoMode = demo, wallet = wallet,
                     records = graph.prefs.records, lastRecord = graph.prefs.records.lastOrNull(),
                     // 설정을 읽기 전(demoMode 기본값 true)에 들어온 실차 값은 수집기가 버렸으므로 여기서 현재 값을 읽는다
-                    soc = if (demo) DemoDriver.START_SOC else graph.vehicle.soc.value,
+                    soc = if (demo) DemoDriver.CURRENT_SOC else graph.vehicle.soc.value,
                     location = if (demo) DemoDriver.START_LOCATION else graph.location.location.value,
                     route = if (demo) it.route else graph.navi.route.value,
                 )
             }
             refreshNextStop()
-            refreshFinder()
+            refreshCorridor()
         }
         graph.vehicle.readVin { vin = it }
         viewModelScope.launch { graph.vehicle.soc.collect { s -> if (!_ui.value.demoMode) onLiveSoc(s) } }
         viewModelScope.launch { graph.vehicle.charging.collect { c -> if (!_ui.value.demoMode) onLiveCharging(c) } }
         viewModelScope.launch {
-            graph.navi.route.collect { r -> if (!_ui.value.demoMode) { _ui.update { it.copy(route = r) }; refreshNextStop() } }
+            graph.navi.route.collect { r ->
+                if (!_ui.value.demoMode) {
+                    _ui.update { it.copy(route = r) }
+                    refreshNextStop()
+                    refreshCorridor()
+                }
+            }
         }
         viewModelScope.launch {
             graph.navi.arrivedAt.collect { if (!_ui.value.demoMode) arrive() }
         }
         viewModelScope.launch {
-            graph.location.location.collect { l -> if (!_ui.value.demoMode && l != null) _ui.update { it.copy(location = l) } }
+            graph.location.location.collect { l ->
+                if (_ui.value.demoMode || l == null) return@collect
+                _ui.update { it.copy(location = l) }
+                // 1km 넘게 움직였을 때만 회랑을 다시 계산한다
+                if (lastCorridorAt?.let { Geo.distanceKm(it, l) > 1.0 } != false) refreshCorridor()
+            }
         }
         viewModelScope.launch { graph.restriction.restricted.collect { r -> _ui.update { it.copy(restricted = r) } } }
         viewModelScope.launch { graph.voice.available.collect { v -> _ui.update { it.copy(voiceAvailable = v) } } }
@@ -163,10 +199,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- 공통 계산 ----------
 
-    private fun startSoc(stop: PlannedStop? = null): Pair<Int, Boolean> {
+    private fun startSoc(stop: PlannedStop? = null): Int {
         val s = _ui.value
-        stop?.arriveSoc?.let { return it to false }
-        return (s.soc ?: UiState.ASSUMED_SOC) to (s.soc == null)
+        stop?.arriveSoc?.let { return it }
+        return s.soc ?: UiState.ASSUMED_SOC
     }
 
     private fun kwhFor(fromSoc: Int): Double {
@@ -189,15 +225,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         return kwh / avgKw.coerceAtLeast(1.0) * 60.0
     }
 
-    private fun rankFit(cands: List<Pair<Station, Double>>, kwh: Double): List<RankedStation> {
-        val s = _ui.value
-        val d = s.data ?: return emptyList()
-        return StationRanker.rankFit(
-            cands, kwh, s.wallet, d.table, d.plans, d::operatorName,
-            chargeMinutes = ::chargeMinutes, successPct = { SyntheticStats.successPct(it.id) },
-        )
-    }
-
     private fun refreshNextStop() {
         viewModelScope.launch {
             val s = _ui.value
@@ -207,15 +234,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 _ui.update { it.copy(nextStop = null) }
                 return@launch
             }
-            val (from, _) = startSoc(stop)
-            val kwh = kwhFor(from)
+            val kwh = kwhFor(startSoc(stop))
             val advice = withContext(Dispatchers.Default) {
-                val center = LatLng(stop.lat, stop.lng)
-                val atStopCands = StationRanker.nearby(d.stations, center, 0.3, 10)
+                val atStopCands = StationRanker.nearby(d.stations, LatLng(stop.lat, stop.lng), 0.3, 10)
                 val atStop = StationRanker.rank(atStopCands, kwh, s.wallet, d.table, d.plans, d::operatorName)
-                val nearby = rankFit(StationRanker.nearby(d.stations, center, 15.0, 40), kwh).take(5)
                 val moeOnly = atStop.filter { r -> r.quote.options.none { it.credential is Credential.Account } }
-                StopAdvice(stop, kwh, atStop, nearby, moeOnly)
+                StopAdvice(stop, kwh, atStop, moeOnly)
             }
             _ui.update { it.copy(nextStop = advice) }
             speakAdvice(advice)
@@ -223,7 +247,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun speakAdvice(a: StopAdvice) {
-        val top = a.atStop.firstOrNull() ?: a.nearby.firstOrNull() ?: return
+        val top = a.atStop.firstOrNull() ?: return
         val best = top.quote.best ?: return
         val saving = top.quote.savingVsMoe ?: 0
         val operator = _ui.value.data?.operatorName(top.quote.station.bid) ?: ""
@@ -242,66 +266,95 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (!_ui.value.voiceAvailable) _ui.update { it.copy(banner = text) }
     }
 
-    // ---------- 충전소 찾기 ----------
+    // ---------- 경로 회랑 ----------
 
-    fun findStations(center: FinderCenter = _ui.value.finder.center, sort: FinderSort = _ui.value.finder.sort) {
-        _ui.update { it.copy(finder = it.finder.copy(center = center, sort = sort)) }
-        refreshFinder()
+    /** 시연은 OSRM 경로선, 실차는 현재 위치 → 정차지 → 목적지 직선(내비가 좌표를 주지 않음) */
+    private fun lineFor(s: UiState, d: AppData): Triple<RouteLine?, Boolean, String> {
+        val r = s.route ?: return Triple(null, false, "")
+        if (s.demoMode) return Triple(RouteLine(d.demoRoute), false, d.demoRouteSource)
+        val pts = listOfNotNull(s.location) + r.stops.map { LatLng(it.lat, it.lng) } +
+            listOfNotNull(r.destination?.let { LatLng(it.lat, it.lng) })
+        return if (pts.size >= 2) Triple(RouteLine(pts), true, "직선 경로(추정)") else Triple(null, false, "")
     }
 
-    private fun refreshFinder() {
-        viewModelScope.launch {
+    private fun refreshCorridor() {
+        corridorJob?.cancel()
+        corridorJob = viewModelScope.launch {
             val s = _ui.value
             val d = s.data ?: return@launch
-            val f = s.finder
+            val (line, estimated, source) = lineFor(s, d)
+            val soc = s.soc ?: UiState.ASSUMED_SOC
+            val carKm = when {
+                line == null -> 0.0
+                s.demoMode -> s.trip.carKm
+                else -> s.location?.let { line.project(it).alongKm } ?: 0.0
+            }
+            val rangeKm = RangeModel.rangeKm(soc, s.batteryKwh, s.kmPerKwh)
             val stop = s.route?.stops?.firstOrNull()
-            val (point, radius, limit) = when (f.center) {
-                FinderCenter.ROUTE_STOP -> Triple(stop?.let { LatLng(it.lat, it.lng) }, 15.0, 40)
-                FinderCenter.DESTINATION -> Triple(s.route?.destination?.let { LatLng(it.lat, it.lng) }, 10.0, 40)
-                FinderCenter.CURRENT -> Triple(s.location ?: DemoDriver.START_LOCATION, 10.0, 40)
-            }
-            if (point == null) {
-                _ui.update { it.copy(finder = f.copy(results = emptyList())) }
-                return@launch
-            }
-            val (from, assumed) = startSoc(if (f.center == FinderCenter.ROUTE_STOP) stop else null)
-            val kwh = kwhFor(from)
-            val results = withContext(Dispatchers.Default) {
-                val cands = StationRanker.nearby(d.stations, point, radius, limit)
-                when (f.sort) {
-                    FinderSort.FIT -> rankFit(cands, kwh)
-                    FinderSort.PRICE -> rankFit(cands, kwh)
-                        .sortedWith(compareBy<RankedStation> { it.quote.best!!.costKrw }.thenBy { it.distanceKm })
-                    FinderSort.DISTANCE -> rankFit(cands, kwh).sortedBy { it.distanceKm }
+            val stopKm = if (line != null && stop != null) line.project(LatLng(stop.lat, stop.lng)).alongKm else null
+            var basis = if (stop != null && stopKm != null && stopKm >= carKm - 0.5) startSoc(stop) else soc
+            // 이미 목표 가까이 찼으면 30% 도착을 가정해 금액을 보여 준다
+            val assumed = s.soc == null || basis >= s.wallet.targetSoc - 5
+            if (basis >= s.wallet.targetSoc - 5) basis = UiState.ASSUMED_SOC
+            val kwh = kwhFor(basis)
+            val built = withContext(Dispatchers.Default) {
+                val cands = if (line != null) {
+                    CorridorRanker.candidates(d.stations, line, carKm)
+                } else {
+                    val center = s.location ?: DemoDriver.START_LOCATION
+                    StationRanker.nearby(d.stations, center, 10.0, 60).map { (st, dist) ->
+                        CorridorRanker.Candidate(st, RouteProjection(0.0, dist, true), onRoute = false)
+                    }
                 }
+                CorridorRanker.build(
+                    cands, kwh, s.wallet, d.table, d.plans, d::operatorName,
+                    chargeMinutes = ::chargeMinutes, successPct = { SyntheticStats.successPct(it.id) },
+                    carKm = if (line != null) carKm else 0.0, rangeKm = rangeKm,
+                    // 경로 없이 주변을 볼 때는 도심이라 나들목 시간을 더하지 않는다
+                    exitPenalty = line != null,
+                )
             }
+            lastCorridorAt = s.location
             _ui.update {
+                val ranked = CorridorRanker.rank(it.trip.mode, built)
+                val keep = it.trip.selectedId?.takeIf { id -> ranked.any { r -> r.station.id == id } }
                 it.copy(
-                    socAssumed = assumed,
-                    finder = it.finder.copy(results = results, kwh = kwh),
+                    trip = it.trip.copy(
+                        line = line, estimated = estimated, routeSource = source, carKm = carKm, rangeKm = rangeKm,
+                        all = built, ranked = ranked, kwh = kwh, basisSoc = basis, basisAssumed = assumed,
+                        stopKm = stopKm, selectedId = keep ?: ranked.firstOrNull()?.station?.id,
+                    ),
                 )
             }
         }
     }
 
-    fun quoteFor(station: Station): Quote? {
-        val (from, _) = startSoc(_ui.value.nextStop?.takeIf { a -> a.atStop.any { it.quote.station.id == station.id } }?.stop)
-        return quote(station, kwhFor(from))
+    fun setMode(mode: RouteMode) = _ui.update {
+        val ranked = CorridorRanker.rank(mode, it.trip.all)
+        it.copy(trip = it.trip.copy(mode = mode, ranked = ranked, selectedId = ranked.firstOrNull()?.station?.id), nav = it.nav.copy(detailStationId = null))
     }
 
-    fun fitFor(stationId: String): RankedStation? =
-        _ui.value.finder.results.firstOrNull { it.quote.station.id == stationId }
-            ?: _ui.value.nextStop?.nearby?.firstOrNull { it.quote.station.id == stationId }
+    fun select(stationId: String) = _ui.update { it.copy(trip = it.trip.copy(selectedId = stationId)) }
+
+    fun quoteFor(station: Station): Quote? {
+        val stop = _ui.value.nextStop?.takeIf { a -> a.atStop.any { it.quote.station.id == station.id } }?.stop
+        return quote(station, kwhFor(startSoc(stop)))
+    }
 
     // ---------- 내비 ----------
 
     fun setAsWaypoint(station: Station) {
         graph.navi.setWaypoint(station)
-        if (_ui.value.demoMode) {
-            val r = _ui.value.route ?: DemoDriver.route()
-            val stop = PlannedStop(station.name, station.lat, station.lng, station.maxKw, DemoDriver.START_SOC, _ui.value.wallet.targetSoc)
+        val s = _ui.value
+        if (s.demoMode) {
+            val r = s.route ?: DemoDriver.route()
+            val c = s.trip.find(station.id)
+            val arrive = c?.let { RangeModel.socAfter(s.soc ?: DemoDriver.CURRENT_SOC, it.alongKm - s.trip.carKm + it.offsetKm, s.batteryKwh, s.kmPerKwh) }
+                ?: DemoDriver.ARRIVE_SOC
+            val stop = PlannedStop(station.name, station.lat, station.lng, station.maxKw, arrive, s.wallet.targetSoc)
             _ui.update { it.copy(route = r.copy(stops = listOf(stop)), banner = "${station.name}을(를) 경유지로 설정했어요") }
             refreshNextStop()
+            refreshCorridor()
         } else {
             _ui.update { it.copy(banner = "${station.name}을(를) 내비 경유지로 요청했어요") }
         }
@@ -320,18 +373,61 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         demoJob?.cancel()
         lastSpoken = null
         _ui.update {
+            val line = it.data?.let { d -> RouteLine(d.demoRoute) }
             it.copy(
-                route = DemoDriver.route(), soc = DemoDriver.START_SOC, location = DemoDriver.START_LOCATION,
+                route = DemoDriver.route(), soc = DemoDriver.CURRENT_SOC,
+                location = line?.pointAt(DemoDriver.CAR_KM) ?: DemoDriver.START_LOCATION,
+                trip = it.trip.copy(carKm = DemoDriver.CAR_KM, selectedId = null, driving = false),
                 prep = null, session = null, nav = Nav(),
             )
         }
         refreshNextStop()
-        refreshFinder()
+        refreshCorridor()
+    }
+
+    /**
+     * [충전 준비] — 시연에서는 차가 그 충전소까지 경로를 따라 이동하는 연출(2.4초) 뒤 준비 화면을 연다.
+     * 도착 SOC: 계획 정차면 내비 값(22%), 아니면 전비로 계산.
+     */
+    fun goCharge(station: Station) {
+        val s = _ui.value
+        val line = s.trip.line
+        val target = s.trip.find(station.id)
+        if (!s.demoMode || line == null || target == null || target.alongKm <= s.trip.carKm + 0.5) {
+            prepare(station)
+            return
+        }
+        demoJob?.cancel()
+        demoJob = viewModelScope.launch {
+            val fromKm = s.trip.carKm
+            val toKm = target.alongKm
+            val fromSoc = s.soc ?: DemoDriver.CURRENT_SOC
+            val atStop = s.nextStop?.atStop?.any { it.quote.station.id == station.id } == true
+            val endSoc = if (atStop) startSoc(s.nextStop?.stop)
+            else RangeModel.socAfter(fromSoc, toKm - fromKm + target.offsetKm, s.batteryKwh, s.kmPerKwh)
+            _ui.update { it.copy(trip = it.trip.copy(driving = true, selectedId = station.id), nav = it.nav.copy(detailStationId = null)) }
+            val steps = 60
+            for (i in 1..steps) {
+                val x = i / steps.toFloat()
+                val f = if (x < 0.5f) 2 * x * x else 1 - (-2 * x + 2) * (-2 * x + 2) / 2 // ease-in-out
+                val km = fromKm + (toKm - fromKm) * f
+                val soc = (fromSoc + (endSoc - fromSoc) * f).roundToInt()
+                _ui.update {
+                    it.copy(
+                        soc = soc,
+                        location = line.pointAt(km),
+                        trip = it.trip.copy(carKm = km, rangeKm = RangeModel.rangeKm(soc, it.batteryKwh, it.kmPerKwh)),
+                    )
+                }
+                delay(40)
+            }
+            _ui.update { it.copy(trip = it.trip.copy(driving = false)) }
+            prepare(station)
+        }
     }
 
     fun arrive() {
         val target = _ui.value.nextStop?.atStop?.firstOrNull()?.quote?.station
-            ?: _ui.value.nextStop?.nearby?.firstOrNull()?.quote?.station
         if (target == null) {
             _ui.update { it.copy(banner = "도착한 충전 정차지가 없어요. 경로를 먼저 정하세요") }
             return
@@ -376,7 +472,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val prep = s.prep ?: return
         val option = prep.quote.best ?: return
         val bench = d.benchFor(s.wallet.vehicleModel) ?: d.bench.models.first()
-        val from = s.soc ?: DemoDriver.START_SOC
+        val from = s.soc ?: DemoDriver.ARRIVE_SOC
         val samples = DemoDriver.chargingSamples(bench, AppData.chargerClass(prep.station.maxKw), s.batteryKwh, from, s.wallet.targetSoc)
         demoJob?.cancel()
         demoJob = viewModelScope.launch {
@@ -445,11 +541,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 wallet = wallet, records = records, lastRecord = record, session = null, prep = null,
                 nav = Nav(tab = Tab.REPORT),
-                // 충전을 마쳤으니 계획된 첫 충전 정차는 끝난 것으로 본다(홈에 같은 정차지가 다시 뜨지 않게)
+                // 충전을 마쳤으니 계획된 첫 충전 정차는 끝난 것으로 본다(지도에 같은 정차지가 다시 뜨지 않게)
                 route = it.route?.let { r -> r.copy(stops = r.stops.drop(1)) },
             )
         }
         refreshNextStop()
+        refreshCorridor()
         val saving = record.moeReferenceKrw?.let { it - record.costKrw } ?: 0
         speakOnce("충전이 끝났어요. ${record.costKrw}원, 환경부 카드보다 ${saving}원 아꼈어요.")
     }
@@ -460,7 +557,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // 첫 SOC가 들어오면 30% 가정으로 계산해 둔 예상 충전량·금액을 다시 계산한다
         if (first) {
             refreshNextStop()
-            refreshFinder()
+            refreshCorridor()
         }
         val sess = _ui.value.session ?: return
         if (soc == null || sess.simulated) return
@@ -493,7 +590,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         graph.prefs.wallet = w
         _ui.update { it.copy(wallet = w) }
         refreshNextStop()
-        refreshFinder()
+        refreshCorridor()
     }
 
     fun setDemoMode(on: Boolean) {
@@ -502,13 +599,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         _ui.update {
             it.copy(
                 demoMode = on, session = null, prep = null,
-                soc = if (on) DemoDriver.START_SOC else graph.vehicle.soc.value,
+                soc = if (on) DemoDriver.CURRENT_SOC else graph.vehicle.soc.value,
                 route = if (on) null else graph.navi.route.value,
                 location = if (on) DemoDriver.START_LOCATION else graph.location.location.value,
+                trip = it.trip.copy(carKm = 0.0, selectedId = null),
             )
         }
         refreshNextStop()
-        refreshFinder()
+        refreshCorridor()
     }
 
     fun loadDemoWallet() = updateWallet(DemoDriver.presetWallet(Prefs.currentMonth()))
@@ -523,28 +621,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun handleVoice(text: String) {
         when {
-            listOf("싼", "저렴", "충전소").any { it in text } -> {
-                val center = if (_ui.value.route?.stops?.isNotEmpty() == true) FinderCenter.ROUTE_STOP else FinderCenter.CURRENT
-                selectTab(Tab.FINDER)
-                findStations(center, FinderSort.FIT)
-                viewModelScope.launch {
-                    delay(600)
-                    val top = _ui.value.finder.results.firstOrNull() ?: return@launch
-                    val best = top.quote.best ?: return@launch
-                    lastSpoken = null
-                    speakOnce("가장 잘 맞는 곳은 ${top.quote.station.name}, ${best.credential.label}로 ${best.costKrw}원입니다.")
-                }
-            }
+            listOf("싼", "저렴").any { it in text } -> voicePick(RouteMode.PRICE)
+            listOf("빠른", "빨리").any { it in text } -> voicePick(RouteMode.FAST)
+            "충전소" in text -> voicePick(RouteMode.FIT)
             "리포트" in text -> selectTab(Tab.REPORT)
             "지갑" in text -> selectTab(Tab.WALLET)
             else -> _ui.update { it.copy(banner = "다시 말씀해 주세요") }
         }
     }
 
+    private fun voicePick(mode: RouteMode) {
+        selectTab(Tab.ROUTE)
+        setMode(mode)
+        val top = _ui.value.trip.ranked.firstOrNull() ?: return
+        val best = top.ranked.quote.best ?: return
+        lastSpoken = null
+        speakOnce("${mode.label} 기준으로 ${top.station.name}, ${best.credential.label}로 ${best.costKrw}원입니다.")
+    }
+
     // ---------- 화면 이동 ----------
 
     fun selectTab(tab: Tab) = _ui.update { it.copy(nav = Nav(tab = tab)) }
-    fun openDetail(stationId: String) = _ui.update { it.copy(nav = it.nav.copy(detailStationId = stationId)) }
+    fun openDetail(stationId: String) = _ui.update { it.copy(nav = it.nav.copy(detailStationId = stationId), trip = it.trip.copy(selectedId = stationId)) }
+    fun closeDetail() = _ui.update { it.copy(nav = it.nav.copy(detailStationId = null)) }
     fun closeCharging() = _ui.update { it.copy(nav = it.nav.copy(chargingOpen = false)) }
 
     /** Back 처리 — 처리했으면 true, 최상위면 false(액티비티가 moveTaskToBack) */
@@ -554,7 +653,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             n.chargingOpen -> _ui.update { it.copy(nav = n.copy(chargingOpen = false)) }
             n.prepOpen -> _ui.update { it.copy(nav = n.copy(prepOpen = false)) }
             n.detailStationId != null -> _ui.update { it.copy(nav = n.copy(detailStationId = null)) }
-            n.tab != Tab.HOME -> _ui.update { it.copy(nav = Nav()) }
+            n.tab != Tab.ROUTE -> _ui.update { it.copy(nav = Nav()) }
             else -> return false
         }
         return true

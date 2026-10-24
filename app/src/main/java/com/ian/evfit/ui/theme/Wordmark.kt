@@ -1,4 +1,4 @@
-// EV FIT 텍스트 워드마크 — "EV"(Soft Blue) + "FIT"(밝은 블루), 가장 굵게
+// EV FIT 텍스트 워드마크 — "EV"(Soft Blue) + "FIT"(밝은 블루), Wanted Sans 가장 굵게
 package com.ian.evfit.ui.theme
 
 import androidx.compose.material3.Text
@@ -17,6 +17,8 @@ fun EvFitWordmark(sizeSp: Int) {
             withStyle(SpanStyle(color = EvFitColors.AccentText)) { append("FIT") }
         },
         fontSize = sizeSp.sp,
-        fontWeight = FontWeight.Black,
+        fontWeight = FontWeight.ExtraBold,
+        fontFamily = Wanted,
+        letterSpacing = (-0.5).sp,
     )
 }

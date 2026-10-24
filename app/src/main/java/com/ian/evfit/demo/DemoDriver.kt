@@ -1,4 +1,4 @@
-// 시연 모드 시나리오 — 에뮬레이터에 없는 위치·경로·충전 중 SOC 흐름을 공급한다(서울→정부대전청사, 망향휴게소 정차)
+// 시연 모드 시나리오 — 에뮬레이터에 없는 위치·경로·충전 중 SOC 흐름을 공급한다(양재→정부대전청사 주행 중 40km 지점, 망향휴게소 정차)
 package com.ian.evfit.demo
 
 import com.ian.evfit.data.ModelBench
@@ -14,13 +14,21 @@ import kotlin.random.Random
 object DemoDriver {
     const val VEHICLE_MODEL = "더 뉴 아이오닉5 2WD 롱레인지 19인치"
     const val BATTERY_KWH = 83.6
-    const val START_SOC = 22
+    /** 망향휴게소 도착 SOC — 내비가 계획 정차에 알려 주는 도착 SOC를 흉내 낸다 */
+    const val ARRIVE_SOC = 22
+    /**
+     * 시연 시작 때 차는 경로 40km 지점(경부고속도로 기흥 부근)에서 SOC 30%.
+     * 망향휴게소(76.2km)까지 36.2km ÷ (5.53km/kWh × 83.6kWh) = 7.8% 소모 → 도착 22%.
+     */
+    const val CAR_KM = 40.0
+    const val CURRENT_SOC = 30
     /** 재생 압축 배율 — 실제 1분을 1초로 */
     const val PLAYBACK_SPEEDUP = 60
 
+    /** 경로가 없을 때 "내 주변" 기준점(양재) */
     val START_LOCATION = LatLng(37.4846, 127.0349)
     val DESTINATION = NamedPoint("정부대전청사", 36.3587, 127.3845, address = "대전광역시 서구 청사로 189")
-    val STOP = PlannedStop("망향휴게소 (부산)", 36.8541795, 127.1804275, maxKw = 200, arriveSoc = START_SOC, targetSoc = 80)
+    val STOP = PlannedStop("망향휴게소 (부산)", 36.8541795, 127.1804275, maxKw = 200, arriveSoc = ARRIVE_SOC, targetSoc = 80)
 
     fun presetWallet(month: String) = Wallet(
         vehicleModel = VEHICLE_MODEL,
