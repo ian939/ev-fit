@@ -2,6 +2,7 @@
 package com.ian.evfit.data
 
 import android.content.Context
+import com.ian.evfit.engine.AvailFilter
 import com.ian.evfit.engine.SocSample
 import com.ian.evfit.engine.Wallet
 import kotlinx.serialization.Serializable
@@ -47,6 +48,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(KEY_DARK, true)
         set(v) = sp.edit().putBoolean(KEY_DARK, v).apply()
 
+    /** 경로 목록 거르기(지금 충전 가능 N면 이상) — 기본은 작동 중인 곳만 */
+    var availFilter: AvailFilter
+        get() = AvailFilter.parse(sp.getString(KEY_AVAIL, null))
+        set(v) = sp.edit().putString(KEY_AVAIL, v.name).apply()
+
     var records: List<ChargeRecord>
         get() = sp.getString(KEY_RECORDS, null)
             ?.let { runCatching { json.decodeFromString<List<ChargeRecord>>(it) }.getOrNull() } ?: emptyList()
@@ -57,6 +63,7 @@ class Prefs(context: Context) {
         private const val KEY_DEMO = "demoMode"
         private const val KEY_DARK = "darkTheme"
         private const val KEY_RECORDS = "records"
+        private const val KEY_AVAIL = "availFilter"
 
         fun currentMonth(): String = YearMonth.now().toString()
 

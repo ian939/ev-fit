@@ -4,8 +4,11 @@ package com.ian.evfit
 import android.app.Application
 import com.ian.evfit.cpo.CpoGateway
 import com.ian.evfit.cpo.MockCpoGateway
+import com.ian.evfit.cpo.MockStatusGateway
+import com.ian.evfit.cpo.StatusGateway
 import com.ian.evfit.data.AssetRepository
 import com.ian.evfit.data.Prefs
+import com.ian.evfit.demo.DemoDriver
 import com.ian.evfit.platform.LocationGateway
 import com.ian.evfit.platform.NaviGateway
 import com.ian.evfit.platform.PleosLocationGateway
@@ -29,6 +32,7 @@ class AppGraph(app: Application) {
     val voice: VoiceGateway = PleosVoiceGateway(app)
     val restriction = RestrictionMonitor(app)
     val cpo: CpoGateway = MockCpoGateway()
+    val status: StatusGateway = MockStatusGateway(DemoDriver.LIVE_STATUS)
 }
 
 class App : Application() {

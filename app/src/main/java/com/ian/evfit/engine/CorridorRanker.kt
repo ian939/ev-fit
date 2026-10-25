@@ -13,6 +13,8 @@ data class CorridorStation(
     /** 진행 방향 고속도로 휴게소처럼 경로를 벗어나지 않고 들를 수 있는 곳 */
     val onRoute: Boolean,
     val reachable: Boolean,
+    /** 급속 충전기 실시간 상태(받지 못했으면 null) */
+    val live: LiveStatus? = null,
 ) {
     val station: Station get() = ranked.quote.station
     val costKrw: Long get() = ranked.quote.best!!.costKrw
@@ -85,9 +87,9 @@ object CorridorRanker {
         }
     }
 
-    /** 도달 가능한 곳만 탭 기준으로 줄 세운다 */
-    fun rank(mode: RouteMode, items: List<CorridorStation>): List<CorridorStation> {
-        val reach = items.filter { it.reachable }
+    /** 도달 가능하고 거르기(지금 충전 가능 N면 이상)를 통과한 곳만 탭 기준으로 줄 세운다 */
+    fun rank(mode: RouteMode, items: List<CorridorStation>, filter: AvailFilter = AvailFilter.ALL): List<CorridorStation> {
+        val reach = items.filter { it.reachable && filter.passes(it.live) }
         return when (mode) {
             RouteMode.FIT -> reach.sortedWith(compareByDescending<CorridorStation> { it.ranked.fit }.thenBy { it.costKrw })
             RouteMode.ON_ROUTE -> reach.sortedWith(compareBy<CorridorStation> { it.ranked.detourMin }.thenBy { it.costKrw }.thenBy { it.alongKm })

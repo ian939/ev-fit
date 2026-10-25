@@ -139,7 +139,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                         vm.select(picks[hitPick].station.id)
                         return@detectTapGestures
                     }
-                    trip.all.filter { it.reachable }
+                    trip.ranked
                         .minByOrNull { (frame.pt(it.station.pos) - tap).getDistance() }
                         ?.takeIf { (frame.pt(it.station.pos) - tap).getDistance() < 26 * d }
                         ?.let { vm.select(it.station.id) }
@@ -195,10 +195,11 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                 }
             }
 
-            // 회랑 안 충전소 점
+            // 회랑 안 충전소 점 — 목록에 오른 곳(도달 가능 + 거르기 통과)만 진하게
+            val shown = trip.ranked.mapTo(HashSet()) { it.station.id }
             trip.all.forEach { c ->
                 val o = frame.pt(c.station.pos)
-                if (c.reachable) drawCircle(EvFitColors.TextPrimary.copy(alpha = if (c.onRoute) 0.75f else 0.32f), (if (c.onRoute) 4.5f else 3f) * d, o)
+                if (c.station.id in shown) drawCircle(EvFitColors.TextPrimary.copy(alpha = if (c.onRoute) 0.75f else 0.32f), (if (c.onRoute) 4.5f else 3f) * d, o)
                 else drawCircle(EvFitColors.TextSecondary.copy(alpha = 0.22f), 1.8f * d, o)
             }
 
@@ -312,11 +313,12 @@ fun CorridorRuler(s: UiState, modifier: Modifier = Modifier) {
         drawLine(EvFitColors.Hairline, Offset(left, y), Offset(right, y), 6 * d, StrokeCap.Round)
         drawLine(EvFitColors.TextPrimary.copy(alpha = 0.28f), Offset(left, y), Offset(x(trip.carKm), y), 6 * d, StrokeCap.Round)
         drawLine(EvFitColors.FitBlueFill, Offset(x(trip.carKm), y), Offset(x(reachEnd), y), 6 * d, StrokeCap.Round)
-        // 회랑 충전소 눈금 — 경로 위(휴게소)는 길게
+        // 회랑 충전소 눈금 — 경로 위(휴게소)는 길게, 목록에 오른 곳만 진하게
+        val shown = trip.ranked.mapTo(HashSet()) { it.station.id }
         trip.all.forEach { c ->
             val h = if (c.onRoute) 14 * d else 7 * d
             drawLine(
-                EvFitColors.TextPrimary.copy(alpha = if (c.reachable) 0.45f else 0.15f),
+                EvFitColors.TextPrimary.copy(alpha = if (c.station.id in shown) 0.45f else 0.15f),
                 Offset(x(c.alongKm), y + 6 * d), Offset(x(c.alongKm), y + 6 * d + h), 1.5f * d,
             )
         }

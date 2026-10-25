@@ -44,6 +44,26 @@ class DemoRouteTest {
     }
 
     @Test
+    fun 시연_상태에서_작동_중만은_1위가_바뀌고_2면_이상이면_망향휴게소가_1위() {
+        val bench = data.benchFor(DemoDriver.VEHICLE_MODEL)!!
+        val kwh = com.ian.evfit.engine.PriceEngine.kwhNeeded(DemoDriver.BATTERY_KWH, DemoDriver.ARRIVE_SOC, 80)
+        val cands = com.ian.evfit.engine.CorridorRanker.candidates(data.stations, line, DemoDriver.CAR_KM)
+        val status = com.ian.evfit.cpo.MockStatusGateway(DemoDriver.LIVE_STATUS)
+        val built = com.ian.evfit.engine.CorridorRanker.build(
+            cands, kwh, DemoDriver.presetWallet("2026-10"), data.table, data.plans, data::operatorName,
+            chargeMinutes = { s, k -> k / bench.avgKwByClass.getValue(com.ian.evfit.data.AppData.chargerClass(s.maxKw).toString()) * 60 },
+            successPct = { com.ian.evfit.engine.SyntheticStats.successPct(it.id) },
+            carKm = DemoDriver.CAR_KM, rangeKm = com.ian.evfit.engine.RangeModel.rangeKm(DemoDriver.CURRENT_SOC, DemoDriver.BATTERY_KWH, 5.53),
+        ).let { b -> val live = kotlinx.coroutines.runBlocking { status.statusOf(b.map { it.station }) }; b.map { it.copy(live = live[it.station.id]) } }
+        fun top(f: com.ian.evfit.engine.AvailFilter) =
+            com.ian.evfit.engine.CorridorRanker.rank(com.ian.evfit.engine.RouteMode.FIT, built, f).first().station.id
+        assertEquals("ST601458", top(com.ian.evfit.engine.AvailFilter.ALL))   // 안성TG셀프주유소 FIT 80.1, 점검 중
+        assertEquals("CV000859", top(com.ian.evfit.engine.AvailFilter.ACTIVE)) // 청룡휴게주유소 78.8, 2면 중 1면
+        assertEquals("ST441324", top(com.ian.evfit.engine.AvailFilter.TWO))   // 망향휴게소 77.4, 5면 중 4면
+        assertEquals("ST441324", top(com.ian.evfit.engine.AvailFilter.FOUR))
+    }
+
+    @Test
     fun 주행_가능_거리는_예비_10퍼센트를_남긴다() {
         // (30−10)% × 83.6kWh × 5.53km/kWh = 92.46km, 예비 이하면 0
         assertEquals(92.4616, com.ian.evfit.engine.RangeModel.rangeKm(30, 83.6, 5.53), 1e-4)

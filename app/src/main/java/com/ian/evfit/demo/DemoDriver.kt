@@ -4,6 +4,7 @@ package com.ian.evfit.demo
 import com.ian.evfit.data.ModelBench
 import com.ian.evfit.engine.ActiveSubscription
 import com.ian.evfit.engine.LatLng
+import com.ian.evfit.engine.LiveStatus
 import com.ian.evfit.engine.SocSample
 import com.ian.evfit.engine.Wallet
 import com.ian.evfit.platform.NamedPoint
@@ -43,6 +44,16 @@ object DemoDriver {
     )
 
     fun route() = RoutePlan(DESTINATION, listOf(STOP))
+
+    /**
+     * 시연 시나리오의 실시간 상태(합성). FIT 1위 안성TG셀프주유소(1면)는 점검 중, 2위 청룡휴게주유소는 2면 중 1면만 비었고,
+     * 망향휴게소(부산)는 5면 중 4면이 비었다 → '작동 중만'에서 1위가 바뀌고, '2면 이상'에서 망향휴게소가 1위가 된다
+     */
+    val LIVE_STATUS = mapOf(
+        "ST601458" to LiveStatus(total = 1, free = 0, busy = 0, down = 1, updatedMinAgo = 2),
+        "CV000859" to LiveStatus(total = 2, free = 1, busy = 1, down = 0, updatedMinAgo = 1),
+        "ST441324" to LiveStatus(total = 5, free = 4, busy = 1, down = 0, updatedMinAgo = 1),
+    )
 
     /**
      * 1% 단위 충전 샘플. 구간 중앙값 kW에 ±4% 흔들림을 주고, 1%에 걸리는 시간 = 0.01×용량 ÷ kW.

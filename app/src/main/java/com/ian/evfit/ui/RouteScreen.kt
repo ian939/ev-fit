@@ -1,8 +1,9 @@
-// 경로 화면(v2) — 왼쪽 지도·경로 자, 오른쪽 패널(배터리·도착 SOC, 탭 기준 추천 목록, 고른 충전소 행동)과 충전소 상세 패널
+// 경로 화면(v2) — 왼쪽 지도·경로 자, 오른쪽 패널(배터리·도착 SOC, 탭 기준 추천 목록·충전 가능 면 수 거르기, 고른 충전소 행동)과 충전소 상세 패널
 package com.ian.evfit.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,8 +37,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ian.evfit.data.AppData
+import com.ian.evfit.engine.AvailFilter
 import com.ian.evfit.engine.CorridorStation
 import com.ian.evfit.engine.Credential
+import com.ian.evfit.engine.LiveStatus
 import com.ian.evfit.engine.RouteMode
 import com.ian.evfit.ui.theme.EvFitColors
 import com.ian.evfit.ui.theme.gauge
@@ -63,6 +66,20 @@ private fun modeCaption(mode: RouteMode, kwh: Double): String = when (mode) {
     RouteMode.FAST -> "우회와 충전 시간을 합쳐 가장 빨리 끝나는 곳"
 }
 
+/** 지금 상태 한 마디 — 빈 충전기가 있으면 '충전 가능 빈 수/전체' */
+private fun liveText(l: LiveStatus): String = when {
+    l.free > 0 -> "충전 가능 ${l.free}/${l.total}"
+    l.down == l.total -> "점검 중"
+    else -> "빈 자리 없음"
+}
+
+/** 2면 이상 비었으면 민트, 1면이면 기본 글자색, 없으면 앰버 */
+private fun liveColor(l: LiveStatus): Color = when {
+    l.free >= 2 -> EvFitColors.Saving
+    l.free == 1 -> EvFitColors.TextPrimary
+    else -> EvFitColors.Warning
+}
+
 @Composable
 private fun RoutePanel(s: UiState, vm: AppViewModel) {
     val trip = s.trip
@@ -70,6 +87,7 @@ private fun RoutePanel(s: UiState, vm: AppViewModel) {
         StatusStrip(s)
         Segmented(RouteMode.entries.map { it.label }, trip.mode.ordinal, { vm.setMode(RouteMode.entries[it]) }, Modifier.fillMaxWidth())
         Text(modeCaption(trip.mode, trip.kwh), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        AvailRow(trip.filter, vm::setFilter)
 
         val rows = trip.ranked.take(6)
         val list = rememberLazyListState()
@@ -77,8 +95,11 @@ private fun RoutePanel(s: UiState, vm: AppViewModel) {
         if (rows.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
-                    if (trip.all.isEmpty()) "경로 옆 5km 안에 결제할 수 있는 충전소가 없어요. 지갑의 결제 수단을 확인해 보세요."
-                    else "남은 배터리로 닿는 충전소가 없어요. 가장 가까운 충전소부터 들르세요.",
+                    when {
+                        trip.all.isEmpty() -> "경로 옆 5km 안에 결제할 수 있는 충전소가 없어요. 지갑의 결제 수단을 확인해 보세요."
+                        trip.all.none { it.reachable } -> "남은 배터리로 닿는 충전소가 없어요. 가장 가까운 충전소부터 들르세요."
+                        else -> "지금 ${trip.filter.minFree}면 이상 비어 있는 충전소가 없어요. 거르기를 한 단계 낮춰 보세요."
+                    },
                     color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyLarge,
                 )
             }
@@ -126,6 +147,30 @@ private fun StatusStrip(s: UiState) {
     }
 }
 
+/** 지금 충전 가능한 급속 충전기 수로 거르기 — 고른 칩을 다시 누르면 전체 */
+@Composable
+private fun AvailRow(filter: AvailFilter, onSelect: (AvailFilter) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("지금 충전 가능", Modifier.padding(end = 4.dp), color = EvFitColors.TextPrimary, style = MaterialTheme.typography.labelLarge)
+        listOf(AvailFilter.ACTIVE, AvailFilter.TWO, AvailFilter.FOUR).forEach { f ->
+            val on = f == filter
+            val shape = RoundedCornerShape(12.dp)
+            Text(
+                f.label,
+                Modifier.clip(shape)
+                    .border(2.dp, if (on) EvFitColors.FitBlueFill else EvFitColors.Hairline, shape)
+                    .background(if (on) EvFitColors.CardAlt else Color.Transparent)
+                    .clickable { onSelect(if (on) AvailFilter.ALL else f) }
+                    .padding(horizontal = 16.dp, vertical = 11.dp),
+                color = if (on) EvFitColors.AccentText else EvFitColors.TextSecondary,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        SyntheticLabel("시연용 합성 상태")
+    }
+}
+
 /** 순위 링 — 지도 표식과 같은 모양(1~3위), 4위부터는 숫자만 */
 @Composable
 private fun RankMark(rank: Int, selected: Boolean) {
@@ -168,13 +213,13 @@ private fun RankRow(s: UiState, index: Int, c: CorridorStation, selected: Boolea
                 val sub = MaterialTheme.typography.bodySmall
                 Text(operator, Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = sub, maxLines = 1)
                 Text("${c.station.maxKw}kW", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = sub)
-                if (s.trip.line != null) Text("${c.alongKm.toInt()}km 지점", Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = sub)
+                c.live?.let { Text(liveText(it), Modifier.alignByBaseline(), color = liveColor(it), style = MaterialTheme.typography.labelMedium) }
                 Text(
                     if (c.onRoute) "경로 위" else "우회 ${c.ranked.detourMin.toInt()}분", Modifier.alignByBaseline(),
                     color = if (c.onRoute) EvFitColors.Saving else EvFitColors.TextSecondary, style = sub,
                 )
                 Spacer(Modifier.weight(1f))
-                if (s.trip.mode != RouteMode.PRICE) Text(won(c.costKrw), Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+                if (s.trip.mode != RouteMode.PRICE) Text(won(c.costKrw), Modifier.alignByBaseline(), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium, softWrap = false)
             }
         }
     }
@@ -235,6 +280,7 @@ private fun StationPanel(s: UiState, vm: AppViewModel, c: CorridorStation) {
             Attr(if (s.trip.line != null) "경로 위치" else "거리", if (s.trip.line != null) "${c.alongKm.toInt()}km 지점" else "${one(c.offsetKm)}km", Modifier.weight(1f))
             Attr("우회", if (c.onRoute) "경로 위" else "${c.ranked.detourMin.toInt()}분(추정)", Modifier.weight(1f), valueColor = if (c.onRoute) EvFitColors.Saving else EvFitColors.TextPrimary)
         }
+        c.live?.let { LiveLine(it) }
         Text(station.addr, color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodyMedium)
 
         Hairline()
@@ -303,3 +349,24 @@ private fun StationPanel(s: UiState, vm: AppViewModel, c: CorridorStation) {
         }
     }
 }
+
+/** 지금 상태 — 급속 충전기 한 대를 한 칸으로(충전 가능 민트·충전 중 회색·점검 앰버·미확인 선) */
+@Composable
+private fun LiveLine(l: LiveStatus) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        val cells = List(l.free) { EvFitColors.Saving } + List(l.busy) { EvFitColors.TextSecondary.copy(alpha = 0.5f) } +
+            List(l.down) { EvFitColors.Warning } + List(l.unknown) { EvFitColors.Hairline }
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            cells.take(MAX_CELLS).forEach { Box(Modifier.size(18.dp).clip(RoundedCornerShape(5.dp)).background(it)) }
+        }
+        if (cells.size > MAX_CELLS) Text("+${cells.size - MAX_CELLS}", color = EvFitColors.TextSecondary, style = MaterialTheme.typography.labelMedium)
+        Text(liveText(l), color = liveColor(l), style = MaterialTheme.typography.titleSmall)
+        Text(
+            "충전 중 ${l.busy}  점검 ${l.down}${if (l.unknown > 0) "  확인 안 됨 ${l.unknown}" else ""}",
+            Modifier.weight(1f), color = EvFitColors.TextSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1,
+        )
+        SyntheticLabel("${l.updatedMinAgo}분 전 · 합성 상태")
+    }
+}
+
+private const val MAX_CELLS = 12

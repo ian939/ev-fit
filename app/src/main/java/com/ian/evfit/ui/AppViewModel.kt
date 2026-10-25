@@ -10,6 +10,7 @@ import com.ian.evfit.data.AppData
 import com.ian.evfit.data.ChargeRecord
 import com.ian.evfit.data.Prefs
 import com.ian.evfit.demo.DemoDriver
+import com.ian.evfit.engine.AvailFilter
 import com.ian.evfit.engine.CorridorRanker
 import com.ian.evfit.engine.CorridorStation
 import com.ian.evfit.engine.Credential
@@ -69,9 +70,11 @@ data class TripState(
     val carKm: Double = 0.0,
     val rangeKm: Double = 0.0,
     val mode: RouteMode = RouteMode.FIT,
+    /** 지금 충전 가능한 급속 충전기 수로 거르기 */
+    val filter: AvailFilter = AvailFilter.ACTIVE,
     /** 회랑 안 후보 전체(도달 못 하는 곳 포함) — 지도 점 */
     val all: List<CorridorStation> = emptyList(),
-    /** 도달 가능한 곳을 탭 기준으로 줄 세운 것 */
+    /** 도달 가능하고 거르기를 통과한 곳을 탭 기준으로 줄 세운 것 */
     val ranked: List<CorridorStation> = emptyList(),
     val kwh: Double = 0.0,
     /** 금액 기준 출발 SOC(계획 정차 도착 SOC 또는 현재 SOC) */
@@ -165,6 +168,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     soc = if (demo) DemoDriver.CURRENT_SOC else graph.vehicle.soc.value,
                     location = if (demo) DemoDriver.START_LOCATION else graph.location.location.value,
                     route = if (demo) it.route else graph.navi.route.value,
+                    trip = it.trip.copy(filter = graph.prefs.availFilter),
                 )
             }
             refreshNextStop()
@@ -315,14 +319,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     exitPenalty = line != null,
                 )
             }
+            // 급속 충전기 실시간 상태를 붙인다(시연은 합성)
+            val live = graph.status.statusOf(built.map { it.station })
+            val all = built.map { it.copy(live = live[it.station.id]) }
             lastCorridorAt = s.location
             _ui.update {
-                val ranked = CorridorRanker.rank(it.trip.mode, built)
+                val ranked = CorridorRanker.rank(it.trip.mode, all, it.trip.filter)
                 val keep = it.trip.selectedId?.takeIf { id -> ranked.any { r -> r.station.id == id } }
                 it.copy(
                     trip = it.trip.copy(
                         line = line, estimated = estimated, routeSource = source, carKm = carKm, rangeKm = rangeKm,
-                        all = built, ranked = ranked, kwh = kwh, basisSoc = basis, basisAssumed = assumed,
+                        all = all, ranked = ranked, kwh = kwh, basisSoc = basis, basisAssumed = assumed,
                         stopKm = stopKm, selectedId = keep ?: ranked.firstOrNull()?.station?.id,
                     ),
                 )
@@ -331,8 +338,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setMode(mode: RouteMode) = _ui.update {
-        val ranked = CorridorRanker.rank(mode, it.trip.all)
+        val ranked = CorridorRanker.rank(mode, it.trip.all, it.trip.filter)
         it.copy(trip = it.trip.copy(mode = mode, ranked = ranked, selectedId = ranked.firstOrNull()?.station?.id), nav = it.nav.copy(detailStationId = null))
+    }
+
+    fun setFilter(filter: AvailFilter) {
+        graph.prefs.availFilter = filter
+        _ui.update {
+            val ranked = CorridorRanker.rank(it.trip.mode, it.trip.all, filter)
+            it.copy(trip = it.trip.copy(filter = filter, ranked = ranked, selectedId = ranked.firstOrNull()?.station?.id))
+        }
     }
 
     fun select(stationId: String) = _ui.update { it.copy(trip = it.trip.copy(selectedId = stationId)) }
