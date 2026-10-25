@@ -163,7 +163,7 @@ fun RouteMap(s: UiState, vm: AppViewModel, modifier: Modifier = Modifier) {
                 val reachEnd = (car + trip.rangeKm).coerceAtMost(line.lengthKm)
                 val ahead = line.slice(car, line.lengthKm).map(frame::pt)
                 val inReach = line.slice(car, reachEnd).map(frame::pt)
-                // 회랑: 경로 양옆 5km 띠 — 도달 범위 안은 밝게
+                // 회랑: 경로 양옆 1km 띠 — 도달 범위 안은 밝게
                 polyline(ahead, EvFitColors.FitBlueFill.copy(alpha = 0.06f), frame.pxPerKm * CorridorRanker.MAX_OFFSET_KM.toFloat() * 2)
                 polyline(inReach, EvFitColors.FitBlueFill.copy(alpha = 0.10f), frame.pxPerKm * CorridorRanker.MAX_OFFSET_KM.toFloat() * 2)
                 // 경로선: 지난 구간 · 도달 범위 · 그 너머(점선)

@@ -96,7 +96,7 @@ private fun RoutePanel(s: UiState, vm: AppViewModel) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Text(
                     when {
-                        trip.all.isEmpty() -> "경로 옆 5km 안에 결제할 수 있는 충전소가 없어요. 지갑의 결제 수단을 확인해 보세요."
+                        trip.all.isEmpty() -> "경로 1km 안에 결제할 수 있는 충전소가 없어요. 지갑의 결제 수단을 확인해 보세요."
                         trip.all.none { it.reachable } -> "남은 배터리로 닿는 충전소가 없어요. 가장 가까운 충전소부터 들르세요."
                         else -> "지금 ${trip.filter.minFree}면 이상 비어 있는 충전소가 없어요. 거르기를 한 단계 낮춰 보세요."
                     },

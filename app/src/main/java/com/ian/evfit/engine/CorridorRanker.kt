@@ -1,4 +1,4 @@
-// 경로 회랑(경로선 옆 5km) 안의 충전소를 도달 가능 여부와 함께 모으고, 탭 기준(FIT·경로 우선·최저가·빠른 충전)으로 줄 세우는 랭커
+// 경로 회랑(경로선 1km 안) 안의 충전소를 도달 가능 여부와 함께 모으고, 탭 기준(FIT·경로 우선·최저가·빠른 충전)으로 줄 세우는 랭커
 package com.ian.evfit.engine
 
 enum class RouteMode(val label: String) {
@@ -22,7 +22,8 @@ data class CorridorStation(
 }
 
 object CorridorRanker {
-    const val MAX_OFFSET_KM = 5.0
+    /** 회랑 폭 — 경로선에서 1km 안(2026-10-25 5km → 1km, 들르기 쉬운 곳만) */
+    const val MAX_OFFSET_KM = 1.0
     const val ON_ROUTE_OFFSET_KM = 0.6
     /** 반대 방향 휴게소로 보는 거리 — 이 안쪽 고속도로 충전소가 진행 방향 왼쪽이면 들를 수 없다 */
     const val OPPOSITE_SIDE_KM = 1.5

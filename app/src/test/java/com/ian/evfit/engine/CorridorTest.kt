@@ -30,21 +30,22 @@ class CorridorTest {
     }
 
     @Test
-    fun 회랑_후보는_앞쪽_5km_안이고_반대방향_휴게소는_뺀다() {
+    fun 회랑_후보는_앞쪽_1km_안이고_반대방향_휴게소는_뺀다() {
         val stations = listOf(
             at("A", 36.5, 126.995, highway = true),  // 오른쪽 0.447km → 경로 위
             at("B", 36.5, 127.005, highway = true),  // 왼쪽 0.447km → 반대 방향 휴게소
-            at("C", 36.6, 127.03, highway = false),  // 0.03도 ≈ 2.68km → 우회 후보
+            at("C", 36.6, 127.01, highway = false),  // 0.01도 = 0.8949km → 우회 후보
             at("D", 36.9, 127.0, highway = false),   // 출발 11km 지점 → 차(20km) 뒤
-            at("E", 36.5, 127.1, highway = false),   // 8.9km → 회랑 밖
+            at("E", 36.5, 127.012, highway = false), // 0.012도 = 1.0738km → 회랑(1km) 밖
         )
         val cands = CorridorRanker.candidates(stations, south, fromKm = 20.0)
         assertEquals(listOf("A", "C"), cands.map { it.station.id })
         assertTrue(cands[0].onRoute)
         assertFalse(cands[1].onRoute)
-        // 우회 = 2.68×2×1.2 + 나들목 5 = 11.44분
+        // 우회 = 0.8949×2×1.2 + 나들목 5 = 7.148분
         val c = cands[1].projection.offsetKm
-        assertEquals(0.03 * kx, c, 0.001)
+        assertEquals(0.01 * kx, c, 0.001)
+        assertEquals(7.148, CorridorRanker.detourMinutes(c, onRoute = false, highwayStation = false), 0.001)
         assertEquals(c * 2.4 + 5.0, CorridorRanker.detourMinutes(c, onRoute = false, highwayStation = false), 1e-9)
         assertEquals(0.0, CorridorRanker.detourMinutes(0.4, onRoute = true, highwayStation = true), 1e-9)
     }
