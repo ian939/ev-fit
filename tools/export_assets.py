@@ -47,19 +47,19 @@ def main() -> None:
         stages.setdefault(stat_id, set()).add(stage)
     ym = con.execute("SELECT ym FROM station_snapshots ORDER BY ym DESC LIMIT 1").fetchone()[0]
     rows = []
-    for stat_id, name, addr, lat, lng, bid, max_kw, kind_detail in con.execute(
-        "SELECT stat_id, name, addr, lat, lng, busi_id, max_output, kind_detail "
+    for stat_id, name, addr, lat, lng, bid, max_kw, kind_detail, n_fast in con.execute(
+        "SELECT stat_id, name, addr, lat, lng, busi_id, max_output, kind_detail, n_fast "
         "FROM stations WHERE n_fast > 0 AND busi_id IS NOT NULL ORDER BY stat_id"
     ):
         if stat_id not in stages:
             continue
         rows.append([
             stat_id, (name or "").strip(), (addr or "").strip(), round(lat, 6), round(lng, 6),
-            bid, max_kw or 0, sorted(stages[stat_id]), kind_detail == "고속도로 휴게소",
+            bid, max_kw or 0, sorted(stages[stat_id]), kind_detail == "고속도로 휴게소", n_fast,
         ])
     write("stations.json", {
         "snapshotYm": ym,
-        "fields": ["id", "name", "addr", "lat", "lng", "bid", "maxKw", "stages", "highway"],
+        "fields": ["id", "name", "addr", "lat", "lng", "bid", "maxKw", "stages", "highway", "nFast"],
         "rows": rows,
     })
 

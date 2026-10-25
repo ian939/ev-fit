@@ -106,7 +106,7 @@ object AssetParser {
         val fields = st.getValue("fields").jsonArray.map { it.jsonPrimitive.content }
         fun idx(name: String) = fields.indexOf(name)
         val iId = idx("id"); val iName = idx("name"); val iAddr = idx("addr"); val iLat = idx("lat"); val iLng = idx("lng")
-        val iBid = idx("bid"); val iMax = idx("maxKw"); val iStages = idx("stages"); val iHw = idx("highway")
+        val iBid = idx("bid"); val iMax = idx("maxKw"); val iStages = idx("stages"); val iHw = idx("highway"); val iFast = idx("nFast")
         val stations = st.getValue("rows").jsonArray.map { e ->
             val r = e as JsonArray
             Station(
@@ -119,6 +119,7 @@ object AssetParser {
                 maxKw = r[iMax].jsonPrimitive.int,
                 stages = r[iStages].jsonArray.map { Stage.parse(it.jsonPrimitive.content) },
                 highway = r[iHw].jsonPrimitive.boolean,
+                fastCount = r[iFast].jsonPrimitive.int,
             )
         }
 

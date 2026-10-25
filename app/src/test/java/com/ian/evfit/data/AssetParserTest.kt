@@ -18,6 +18,7 @@ class AssetParserTest {
         assertEquals(391.0, data.table.memberPrice("ST", Stage.S4)!!, 1e-9)
         val st = data.station("ST441324")!!
         assertTrue(st.highway)
+        assertEquals(5, st.fastCount)
         assertEquals(Stage.S5, st.topStage)
         assertEquals(7, data.plans.size)
         assertTrue(data.vehicle("더 뉴 아이오닉5 2WD 롱레인지 19인치")!!.batteryKwh == 83.6)

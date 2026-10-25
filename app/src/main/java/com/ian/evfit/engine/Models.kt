@@ -24,6 +24,8 @@ data class Station(
     val id: String, val name: String, val addr: String,
     val lat: Double, val lng: Double, val bid: String,
     val maxKw: Int, val stages: List<Stage>, val highway: Boolean,
+    /** 급속 충전기 수(환경부 충전소 정보) — '충전 가능 N면' 거르기의 전체 면 수 */
+    val fastCount: Int = 1,
 ) {
     /** 단가 계산 기준 단계 — 이 충전소의 급속 단계 중 최고 */
     val topStage: Stage get() = stages.maxBy { it.ordinal }
