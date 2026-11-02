@@ -6,6 +6,8 @@
 
 내가 가진 결제수단(환경부 카드·충전사업자 회원·구독)으로 **실제로 내는 요금**, 경로·충전 시간, 동일 차종 충전 경험을 차가 종합해 **가장 잘 맞는 충전소와 결제 계정**을 고르고, PnC 충전까지 준비하는 현대자동차그룹 Pleos Connect용 차량 앱입니다.
 
+**시연 영상**: [Release v1.0 — EVFIT_demo.mp4](https://github.com/ian939/ev-fit/releases/tag/v1.0) (128초, 에뮬레이터 실제 녹화 + 모션그래픽)
+
 ## 브랜드
 
 - **네이밍**: Electric Vehicle + FIT("꼭 맞다"). 모든 운전자에게 가장 좋은 충전소는 없지만, 나에게 가장 잘 맞는 충전소는 있습니다.
@@ -85,7 +87,7 @@
 
 ## APK 위치
 
-`apk/` 폴더의 release APK(파일명 형식 `팀명_EVFIT_release.apk`, APK Signature Scheme v3 서명).
+`apk/` 폴더의 release APK(파일명 형식 `팀명_EVFIT_release.apk`, APK Signature Scheme v3 서명). 시연 영상은 [Release v1.0](https://github.com/ian939/ev-fit/releases/tag/v1.0)에 있습니다.
 
 ## 소스 빌드
 
